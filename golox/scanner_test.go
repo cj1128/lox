@@ -72,15 +72,35 @@ func TestScannerOverall(t *testing.T) {
 }
 
 func TestScannerError(t *testing.T) {
-	t.Run("bad number", func(t *testing.T) {
-		scanner := NewScanner("1.abc")
-		_, err := scanner.ScanTokens()
-		assert.NotNil(t, err)
-	})
-
 	t.Run("unterminated string", func(t *testing.T) {
 		scanner := NewScanner(`"unterminated string`)
 		_, err := scanner.ScanTokens()
 		assert.NotNil(t, err)
+	})
+}
+
+func TestScannerComment(t *testing.T) {
+	t.Run("line comment", func(t *testing.T) {
+		scanner := NewScanner(`
+      // this should be ignored
+      +
+    `)
+		tokens, err := scanner.ScanTokens()
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(tokens))
+	})
+
+	t.Run("block comment", func(t *testing.T) {
+		scanner := NewScanner(`
+      /*
+        /*
+           hello world
+        */
+      */
+      +
+    `)
+		tokens, err := scanner.ScanTokens()
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(tokens))
 	})
 }

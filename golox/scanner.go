@@ -15,10 +15,10 @@ import (
 )
 
 type Scanner struct {
-	source  []rune
-	start   int
-	current int
-	line    int
+	source []rune
+	start  int
+	next   int
+	line   int
 }
 
 func NewScanner(source string) *Scanner {
@@ -29,24 +29,25 @@ func NewScanner(source string) *Scanner {
 }
 
 func (s *Scanner) isAtEnd() bool {
-	return s.current == len(s.source)
+	return s.next == len(s.source)
 }
 
 func (s *Scanner) advance() rune {
-	s.current++
-	return s.source[s.current-1]
+	s.next++
+	return s.source[s.next-1]
 }
 
-func (s *Scanner) char() rune {
-	return s.source[s.current]
+func (s *Scanner) currentStr() string {
+	return string(s.source[s.start:s.next])
 }
 
 func (s *Scanner) peek() rune {
 	return s.peekN(1)
 }
 
+// return 0x00 if index out of bound
 func (s *Scanner) peekN(n int) rune {
-	i := s.current + n - 1
+	i := s.next + n - 1
 	if i >= len(s.source) {
 		return '\x00'
 	}
@@ -56,7 +57,7 @@ func (s *Scanner) peekN(n int) rune {
 func (s *Scanner) newToken(typ TokenType, literal interface{}) *Token {
 	return newToken(
 		typ,
-		string(s.source[s.start:s.current]),
+		s.currentStr(),
 		literal,
 		s.line,
 	)
@@ -64,7 +65,7 @@ func (s *Scanner) newToken(typ TokenType, literal interface{}) *Token {
 
 func (s *Scanner) ScanTokens() (tokens []*Token, err error) {
 	for !s.isAtEnd() {
-		s.start = s.current
+		s.start = s.next
 		token, e := s.scanToken()
 		if e != nil {
 			err = errors.Wrap(e, fmt.Sprintf("line %d", s.line))
@@ -77,6 +78,7 @@ func (s *Scanner) ScanTokens() (tokens []*Token, err error) {
 
 	tokens = append(
 		tokens,
+		// can't use s.newToken, it would use last character as lexeme
 		newToken(EOF, "", nil, s.line),
 	)
 	return
@@ -97,7 +99,7 @@ func (s *Scanner) scanString() (token *Token, err error) {
 	// swallow the closing "
 	s.advance()
 
-	token = s.newToken(STRING, string(s.source[s.start+1:s.current-1]))
+	token = s.newToken(STRING, string(s.source[s.start+1:s.next-1]))
 	return
 }
 
@@ -111,10 +113,13 @@ func (s *Scanner) scanNumber() (token *Token, err error) {
 		for isDigit(s.peek()) {
 			s.advance()
 		}
-		n, _ := strconv.ParseFloat(string(s.source[s.start:s.current]), 64)
-		token = s.newToken(NUMBER, n)
+	}
+
+	n, e := strconv.ParseFloat(s.currentStr(), 64)
+	if e != nil {
+		err = errors.Wrap(e, "Can't parse number")
 	} else {
-		err = fmt.Errorf("Invalid number")
+		token = s.newToken(NUMBER, n)
 	}
 	return
 }
@@ -123,7 +128,7 @@ func (s *Scanner) scanIdentifier() *Token {
 	for isAlphaNumeric(s.peek()) {
 		s.advance()
 	}
-	identifier := string(s.source[s.start:s.current])
+	identifier := s.currentStr()
 	typ := KeywordToken[identifier]
 	if typ == "" {
 		return s.newToken(IDENTIFIER, nil)
