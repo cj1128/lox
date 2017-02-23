@@ -10,11 +10,11 @@ package main
 import "gopkg.in/alecthomas/kingpin.v2"
 
 var (
-	script string
+	scriptPath string
 )
 
 func parseFlags() {
-	kingpin.Arg("script", "script to run").StringVar(&script)
+	kingpin.Arg("script", "specify script path").StringVar(&scriptPath)
 	kingpin.Parse()
 }
 
@@ -22,9 +22,9 @@ func main() {
 	parseFlags()
 
 	lox := &Lox{}
-	if script == "" {
+	if scriptPath == "" {
 		lox.runPrompt()
 	} else {
-		lox.runFile(script)
+		lox.runFile(scriptPath)
 	}
 }

@@ -4,21 +4,25 @@
 * @Email: fatelovely1128@gmail.com
  */
 
+// Scanner implements
 package main
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/pkg/errors"
+)
 
 type Scanner struct {
-	lox     *Lox
 	source  []rune
 	start   int
 	current int
 	line    int
 }
 
-func newScanner(lox *Lox, source string) *Scanner {
+func NewScanner(source string) *Scanner {
 	return &Scanner{
-		lox:    lox,
 		source: []rune(source),
 		line:   1,
 	}
@@ -58,12 +62,14 @@ func (s *Scanner) newToken(typ TokenType, literal interface{}) *Token {
 	)
 }
 
-func (s *Scanner) scanTokens() []*Token {
-	var tokens []*Token
-
+func (s *Scanner) ScanTokens() (tokens []*Token, err error) {
 	for !s.isAtEnd() {
 		s.start = s.current
-		token := s.scanToken()
+		token, e := s.scanToken()
+		if e != nil {
+			err = errors.Wrap(e, fmt.Sprintf("line %d", s.line))
+			return
+		}
 		if token != nil {
 			tokens = append(tokens, token)
 		}
@@ -73,11 +79,10 @@ func (s *Scanner) scanTokens() []*Token {
 		tokens,
 		newToken(EOF, "", nil, s.line),
 	)
-
-	return tokens
+	return
 }
 
-func (s *Scanner) scanString() *Token {
+func (s *Scanner) scanString() (token *Token, err error) {
 	for s.peek() != '"' && !s.isAtEnd() {
 		if s.peek() == '\n' {
 			s.line++
@@ -85,56 +90,45 @@ func (s *Scanner) scanString() *Token {
 		s.advance()
 	}
 	if s.isAtEnd() {
-		s.lox.err(s.line, "Unterminated string.")
-		return nil
+		err = fmt.Errorf("Unterminated string")
+		return
 	}
 
 	// swallow the closing "
 	s.advance()
 
-	return s.newToken(STRING, string(s.source[s.start:s.current]))
+	token = s.newToken(STRING, string(s.source[s.start+1:s.current-1]))
+	return
 }
 
-func (s *Scanner) isDigit(r rune) bool {
-	return r >= '0' && r <= '9'
-}
-
-func (s *Scanner) scanNumber() *Token {
-	for s.isDigit(s.peek()) {
+func (s *Scanner) scanNumber() (token *Token, err error) {
+	for isDigit(s.peek()) {
 		s.advance()
 	}
 
-	if s.peek() == '.' && s.isDigit(s.peekN(2)) {
+	if s.peek() == '.' && isDigit(s.peekN(2)) {
 		s.advance()
-		for s.isDigit(s.peek()) {
+		for isDigit(s.peek()) {
 			s.advance()
 		}
+		n, _ := strconv.ParseFloat(string(s.source[s.start:s.current]), 64)
+		token = s.newToken(NUMBER, n)
+	} else {
+		err = fmt.Errorf("Invalid number")
 	}
-
-	n, _ := strconv.ParseFloat(string(s.source[s.start:s.current]), 64)
-	return s.newToken(NUMBER, n)
-}
-
-func (s *Scanner) isAlpha(c rune) bool {
-	return (c >= 'a' && c <= 'z') ||
-		(c >= 'A' && c <= 'Z') ||
-		c == '_'
-}
-
-func (s *Scanner) isAlphaNumeric(c rune) bool {
-	return s.isAlpha(c) || s.isDigit(c)
+	return
 }
 
 func (s *Scanner) scanIdentifier() *Token {
-	for s.isAlphaNumeric(s.peek()) {
+	for isAlphaNumeric(s.peek()) {
 		s.advance()
 	}
-	id := string(s.source[s.start:s.current])
-	typ := KeywordToken[id]
+	identifier := string(s.source[s.start:s.current])
+	typ := KeywordToken[identifier]
 	if typ == "" {
-		return s.newToken(IDENTIFIER, id)
+		return s.newToken(IDENTIFIER, nil)
 	} else {
-		return s.newToken(typ, id)
+		return s.newToken(typ, nil)
 	}
 }
 
@@ -158,7 +152,7 @@ func (s *Scanner) scanBlockComment() {
 	}
 }
 
-func (s *Scanner) scanToken() (token *Token) {
+func (s *Scanner) scanToken() (token *Token, err error) {
 	c := s.advance()
 	switch c {
 	case '(':
@@ -215,7 +209,8 @@ func (s *Scanner) scanToken() (token *Token) {
 			for !s.isAtEnd() && s.peek() != '\n' {
 				s.advance()
 			}
-		} else if s.peek() == '*' { // block comment
+			// block comment
+		} else if s.peek() == '*' {
 			s.advance() // consume *
 			s.scanBlockComment()
 		} else {
@@ -227,14 +222,14 @@ func (s *Scanner) scanToken() (token *Token) {
 	case '\n':
 		s.line++
 	case '"':
-		token = s.scanString()
+		return s.scanString()
 	default:
-		if s.isDigit(c) {
-			token = s.scanNumber()
-		} else if s.isAlpha(c) {
+		if isDigit(c) {
+			return s.scanNumber()
+		} else if isAlpha(c) {
 			token = s.scanIdentifier()
 		} else {
-			s.lox.err(s.line, "Unexpected character.")
+			err = fmt.Errorf("Unexpected character")
 		}
 	}
 	return

@@ -6,6 +6,10 @@ run: install
 	golox
 .PHONY: run
 
+test:
+	go test -v -cover
+.PHONY: test
+
 lint:
 	gometalinter --config=.gometalinterrc
 .PHONY: lint

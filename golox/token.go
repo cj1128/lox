@@ -8,34 +8,6 @@ package main
 
 import "fmt"
 
-type TokenType string
-
-type Token struct {
-	typ     TokenType
-	lexeme  string
-	literal interface{} // string or number
-	line    int
-}
-
-var KeywordToken = map[string]TokenType{
-	"and":    AND,
-	"class":  CLASS,
-	"else":   ELSE,
-	"false":  FALSE,
-	"for":    FOR,
-	"func":   FUNC,
-	"if":     IF,
-	"nil":    NIL,
-	"or":     OR,
-	"print":  PRINT,
-	"return": RETURN,
-	"super":  SUPER,
-	"this":   THIS,
-	"true":   TRUE,
-	"var":    VAR,
-	"while":  WHILE,
-}
-
 const (
 	// Single-character tokens
 	LEFT_PAREN  TokenType = "Left_Paren"
@@ -86,6 +58,38 @@ const (
 	EOF = "EOF"
 )
 
+type TokenType string
+
+type Token struct {
+	typ     TokenType
+	lexeme  string
+	literal interface{} // string or number
+	line    int
+}
+
+func (t *Token) String() string {
+	return fmt.Sprintf("[%d] %s: %#v(`%s`)", t.line, t.typ, t.literal, t.lexeme)
+}
+
+var KeywordToken = map[string]TokenType{
+	"and":    AND,
+	"class":  CLASS,
+	"else":   ELSE,
+	"false":  FALSE,
+	"for":    FOR,
+	"func":   FUNC,
+	"if":     IF,
+	"nil":    NIL,
+	"or":     OR,
+	"print":  PRINT,
+	"return": RETURN,
+	"super":  SUPER,
+	"this":   THIS,
+	"true":   TRUE,
+	"var":    VAR,
+	"while":  WHILE,
+}
+
 func newToken(
 	typ TokenType,
 	lexeme string,
@@ -98,8 +102,4 @@ func newToken(
 		literal: literal,
 		line:    line,
 	}
-}
-
-func (t *Token) String() string {
-	return fmt.Sprintf("%v %s %v", t.typ, t.lexeme, t.literal)
 }

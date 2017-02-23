@@ -10,41 +10,48 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
 type Lox struct{}
 
-var errorf = func(str string, items ...interface{}) {
-	fmt.Fprintf(os.Stderr, str, items...)
-}
-
-func (l *Lox) runFile(path string) {
+func (lox *Lox) runFile(path string) {
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Fatal(err)
+		lox.Fatal(err)
 	}
-	l.run(string(buf))
+	err = lox.run(string(buf))
+	if err != nil {
+		lox.Fatal(err)
+	}
 }
 
-func (l *Lox) err(line int, msg string) {
-	errorf("[line %d] Error: %s\n", line, msg)
-}
-
-func (l *Lox) runPrompt() {
+func (lox *Lox) runPrompt() {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("> ")
 	for scanner.Scan() {
 		str := scanner.Text()
-		l.run(str)
+		err := lox.run(str)
+		if err != nil {
+			fmt.Println(err)
+		}
 		fmt.Print("> ")
 	}
 }
 
-func (l *Lox) run(source string) {
-	scanner := newScanner(l, source)
-	for _, token := range scanner.scanTokens() {
+func (lox *Lox) Fatal(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
+}
+
+func (lox *Lox) run(source string) error {
+	scanner := NewScanner(source)
+	tokens, err := scanner.ScanTokens()
+	if err != nil {
+		return err
+	}
+	for _, token := range tokens {
 		fmt.Println(token)
 	}
+	return nil
 }
