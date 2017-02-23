@@ -38,9 +38,3 @@
 #### Tree-Walk Interpreters
 
 Tree-walk interpreters指的是生成AST以后通过遍历AST来执行代码。这个技术通常用于小的实验项目中，通用编程语言很少用因为比较慢（Ruby是一个例外，1.9之前的ruby使用的就是这个技术）。
-
-## Scanning
-
-scanning阶段扫描出的每一个符号叫做：`lexeme`。
-
-`maximal munch`原则：当两个词法规则都能匹配token的时候，匹配到最多字符的规则胜出。
