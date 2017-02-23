@@ -16,7 +16,7 @@
 - Control Flow Graph(CFG)
 - Static Single-Assignment(SSA)
 - Continuation-Passing Style(CPS)
-- Tree Address Code(TAC)
+- Three Address Code(TAC)
 
 #### Optimization
 
@@ -43,4 +43,4 @@ Tree-walk interpreters指的是生成AST以后通过遍历AST来执行代码。�
 
 scanning阶段扫描出的每一个符号叫做：`lexeme`。
 
-`maximal munch`原则。
+`maximal munch`原则：当两个词法规则都能匹配token的时候，匹配到最多字符的规则胜出。

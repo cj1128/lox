@@ -1,8 +1,6 @@
 # Lox Programming Language
 
-this is my review of [Crafting Interpreters](http://www.craftinginterpreters.com/). 
-
-use Go rather than Java to implement Lox language in the book.
+Implementation of [Crafting Interpreters](http://www.craftinginterpreters.com/)'s Lox language. Use Go rather than Java.
 
 ## Install
 

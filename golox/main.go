@@ -4,25 +4,27 @@
 * @Email: fatelovely1128@gmail.com
  */
 
+// Lox interpreter
 package main
 
-import (
-	"log"
-	"os"
+import "gopkg.in/alecthomas/kingpin.v2"
+
+var (
+	script string
 )
 
+func parseFlags() {
+	kingpin.Arg("script", "script to run").StringVar(&script)
+	kingpin.Parse()
+}
+
 func main() {
-	args := os.Args
-	if len(args) > 2 {
-		log.Println("Usage: golox [script]")
-		os.Exit(1)
-	}
+	parseFlags()
 
 	lox := &Lox{}
-
-	if len(args) == 2 {
-		lox.runFile(args[1])
-	} else {
+	if script == "" {
 		lox.runPrompt()
+	} else {
+		lox.runFile(script)
 	}
 }
