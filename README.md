@@ -17,3 +17,7 @@ this is some modifications to lox.
 
 - make function keyword be `func` rather than `fun`
 - handle nested block-comment(`/* … */`)
+
+## Lox Spec
+
+[Lox Spec](./spec.md)

@@ -1,9 +1,3 @@
-/*
-* @Author: CJ Ting
-* @Date: 2017-02-23 16:06:28
-* @Email: fatelovely1128@gmail.com
- */
-
 package main
 
 func isDigit(r rune) bool {

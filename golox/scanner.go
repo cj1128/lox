@@ -1,9 +1,3 @@
-/*
-* @Author: CJ Ting
-* @Date: 2017-01-18 11:06:37
-* @Email: fatelovely1128@gmail.com
- */
-
 // Scanner implements
 package main
 
@@ -27,6 +21,30 @@ func NewScanner(source string) *Scanner {
 		line:   1,
 	}
 }
+
+func (s *Scanner) ScanTokens() ([]*Token, error) {
+	var tokens []*Token
+	for !s.isAtEnd() {
+		s.start = s.next
+		token, e := s.scanToken()
+		if e != nil {
+			return nil, errors.Wrap(e, fmt.Sprintf("line %d", s.line))
+		}
+		if token != nil {
+			tokens = append(tokens, token)
+		}
+	}
+
+	tokens = append(
+		tokens,
+		// can't use `s.newToken`, it would use last character as lexeme
+		NewToken(EOF, "", nil, s.line),
+	)
+
+	return tokens, nil
+}
+
+/*----------  Private Methods  ----------*/
 
 func (s *Scanner) isAtEnd() bool {
 	return s.next == len(s.source)
@@ -55,7 +73,7 @@ func (s *Scanner) peekN(n int) rune {
 }
 
 func (s *Scanner) newToken(typ TokenType, literal interface{}) *Token {
-	return newToken(
+	return NewToken(
 		typ,
 		s.currentStr(),
 		literal,
@@ -63,47 +81,25 @@ func (s *Scanner) newToken(typ TokenType, literal interface{}) *Token {
 	)
 }
 
-func (s *Scanner) ScanTokens() (tokens []*Token, err error) {
-	for !s.isAtEnd() {
-		s.start = s.next
-		token, e := s.scanToken()
-		if e != nil {
-			err = errors.Wrap(e, fmt.Sprintf("line %d", s.line))
-			return
-		}
-		if token != nil {
-			tokens = append(tokens, token)
-		}
-	}
-
-	tokens = append(
-		tokens,
-		// can't use s.newToken, it would use last character as lexeme
-		newToken(EOF, "", nil, s.line),
-	)
-	return
-}
-
-func (s *Scanner) scanString() (token *Token, err error) {
+func (s *Scanner) scanString() (*Token, error) {
 	for s.peek() != '"' && !s.isAtEnd() {
 		if s.peek() == '\n' {
 			s.line++
 		}
 		s.advance()
 	}
+
 	if s.isAtEnd() {
-		err = fmt.Errorf("Unterminated string")
-		return
+		return nil, fmt.Errorf("unterminated string")
 	}
 
 	// swallow the closing "
 	s.advance()
 
-	token = s.newToken(STRING, string(s.source[s.start+1:s.next-1]))
-	return
+	return s.newToken(STRING, string(s.source[s.start+1:s.next-1])), nil
 }
 
-func (s *Scanner) scanNumber() (token *Token, err error) {
+func (s *Scanner) scanNumber() (*Token, error) {
 	for isDigit(s.peek()) {
 		s.advance()
 	}
@@ -116,12 +112,12 @@ func (s *Scanner) scanNumber() (token *Token, err error) {
 	}
 
 	n, e := strconv.ParseFloat(s.currentStr(), 64)
+
 	if e != nil {
-		err = errors.Wrap(e, "Can't parse number")
-	} else {
-		token = s.newToken(NUMBER, n)
+		return nil, errors.Wrap(e, "can't parse number")
 	}
-	return
+
+	return s.newToken(NUMBER, n), nil
 }
 
 func (s *Scanner) scanIdentifier() *Token {
@@ -137,6 +133,7 @@ func (s *Scanner) scanIdentifier() *Token {
 	}
 }
 
+// support nested block comment
 func (s *Scanner) scanBlockComment() {
 	for !s.isAtEnd() {
 		// nested block comment
@@ -157,8 +154,11 @@ func (s *Scanner) scanBlockComment() {
 	}
 }
 
-func (s *Scanner) scanToken() (token *Token, err error) {
+func (s *Scanner) scanToken() (*Token, error) {
+	var token *Token
+
 	c := s.advance()
+
 	switch c {
 	case '(':
 		token = s.newToken(LEFT_PAREN, nil)
@@ -234,8 +234,8 @@ func (s *Scanner) scanToken() (token *Token, err error) {
 		} else if isAlpha(c) {
 			token = s.scanIdentifier()
 		} else {
-			err = fmt.Errorf("Unexpected character")
+			return nil, fmt.Errorf("unexpected character: %c", c)
 		}
 	}
-	return
+	return token, nil
 }

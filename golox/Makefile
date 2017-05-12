@@ -1,15 +1,15 @@
 install:
-	godep go install
+	@go install
 .PHONY: install
 
 run: install
-	golox
+	@golox
 .PHONY: run
 
 test:
-	go test -v -cover
+	@go test -cover
 .PHONY: test
 
 lint:
-	gometalinter --config=.gometalinterrc
+	@gometalinter --config=.gometalinterrc
 .PHONY: lint

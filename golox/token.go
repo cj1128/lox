@@ -1,36 +1,32 @@
-/*
-* @Author: CJ Ting
-* @Date: 2017-01-18 11:13:31
-* @Email: fatelovely1128@gmail.com
- */
-
 package main
 
 import "fmt"
 
+type TokenType string
+
 const (
 	// Single-character tokens
-	LEFT_PAREN  TokenType = "Left_Paren"
-	RIGHT_PAREN           = "Right_Paren"
-	LEFT_BRACE            = "Left_Brace"
-	RIGHT_BRACE           = "Right_Brace"
-	COMMA                 = "Comma"
-	DOT                   = "Dot"
-	MINUS                 = "Minus"
-	PLUS                  = "Plus"
-	SEMICOLON             = "Semicolon"
-	SLASH                 = "Slash"
-	STAR                  = "Star"
+	LEFT_PAREN  TokenType = "Left_Paren"  // (
+	RIGHT_PAREN           = "Right_Paren" // )
+	LEFT_BRACE            = "Left_Brace"  // {
+	RIGHT_BRACE           = "Right_Brace" // }
+	COMMA                 = "Comma"       // ,
+	DOT                   = "Dot"         // .
+	MINUS                 = "Minus"       // -
+	PLUS                  = "Plus"        // +
+	SEMICOLON             = "Semicolon"   // ;
+	SLASH                 = "Slash"       // /
+	STAR                  = "Star"        // *
 
 	// One or two character tokens
-	BANG          = "Bang"
-	BANG_EQUAL    = "Bang_Equal"
-	EQUAL         = "Equal"
-	EQUAL_EQUAL   = "Equal_Equal"
-	GREATER       = "Greater"
-	GREATER_EQUAL = "Greater_Equal"
-	LESS          = "Less"
-	LESS_EQUAL    = "Less_Equal"
+	BANG          = "Bang"          // !
+	BANG_EQUAL    = "Bang_Equal"    // !=
+	EQUAL         = "Equal"         // =
+	EQUAL_EQUAL   = "Equal_Equal"   // ==
+	GREATER       = "Greater"       // >
+	GREATER_EQUAL = "Greater_Equal" // >=
+	LESS          = "Less"          // <
+	LESS_EQUAL    = "Less_Equal"    // <=
 
 	// Literals
 	IDENTIFIER = "Identifier"
@@ -58,8 +54,6 @@ const (
 	EOF = "EOF"
 )
 
-type TokenType string
-
 type Token struct {
 	typ     TokenType
 	lexeme  string
@@ -68,7 +62,7 @@ type Token struct {
 }
 
 func (t *Token) String() string {
-	return fmt.Sprintf("[%d] %s: %#v(`%s`)", t.line, t.typ, t.literal, t.lexeme)
+	return fmt.Sprintf("[%d] %s: %#s (%#v)", t.line, t.typ, t.lexeme, t.literal)
 }
 
 var KeywordToken = map[string]TokenType{
@@ -90,7 +84,7 @@ var KeywordToken = map[string]TokenType{
 	"while":  WHILE,
 }
 
-func newToken(
+func NewToken(
 	typ TokenType,
 	lexeme string,
 	literal interface{},

@@ -1,9 +1,3 @@
-/*
-* @Author: CJ Ting
-* @Date: 2017-02-23 14:56:58
-* @Email: fatelovely1128@gmail.com
- */
-
 package main
 
 import (
