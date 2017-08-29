@@ -1,6 +1,0 @@
-{
-	"ImportPath": "github.com/fate-lovely/lox/golox",
-	"GoVersion": "go1.7",
-	"GodepVersion": "v74",
-	"Deps": []
-}
