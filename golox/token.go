@@ -62,7 +62,7 @@ type Token struct {
 }
 
 func (t *Token) String() string {
-	return fmt.Sprintf("[%d] %s: %#s (%#v)", t.line, t.typ, t.lexeme, t.literal)
+	return fmt.Sprintf("[%d] %s: %s (%#v)", t.line, t.typ, t.lexeme, t.literal)
 }
 
 var KeywordToken = map[string]TokenType{

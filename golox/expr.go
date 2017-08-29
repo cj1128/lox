@@ -9,11 +9,11 @@ type Expr interface {
 	print() string
 }
 
-type ExprLietral struct {
+type ExprLiteral struct {
 	value interface{}
 }
 
-func (expr *ExprLietral) print() string {
+func (expr *ExprLiteral) print() string {
 	return fmt.Sprintf("%#v", expr.value)
 }
 
