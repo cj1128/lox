@@ -13,6 +13,10 @@ type ExprLiteral struct {
 	value interface{}
 }
 
+func NewExprLiteral(val interface{}) *ExprLiteral {
+	return &ExprLiteral{val}
+}
+
 func (expr *ExprLiteral) print() string {
 	return fmt.Sprintf("%#v", expr.value)
 }
@@ -20,6 +24,10 @@ func (expr *ExprLiteral) print() string {
 type ExprUnary struct {
 	operator *Token
 	operand  Expr
+}
+
+func NewExprUnary(operator *Token, operand Expr) *ExprUnary {
+	return &ExprUnary{operator, operand}
 }
 
 func (expr *ExprUnary) print() string {
@@ -32,12 +40,20 @@ type ExprBinary struct {
 	right    Expr
 }
 
+func NewExprBinary(left Expr, operator *Token, right Expr) *ExprBinary {
+	return &ExprBinary{left, operator, right}
+}
+
 func (expr *ExprBinary) print() string {
 	return parenthesize(expr.operator.lexeme, expr.left, expr.right)
 }
 
 type ExprGrouping struct {
 	operand Expr
+}
+
+func NewExprGrouping(operand Expr) *ExprGrouping {
+	return &ExprGrouping{operand}
 }
 
 func (expr *ExprGrouping) print() string {

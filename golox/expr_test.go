@@ -7,16 +7,16 @@ import (
 )
 
 func TestExprPrint(t *testing.T) {
-	expr := &ExprBinary{
-		&ExprUnary{
+	expr := NewExprBinary(
+		NewExprUnary(
 			NewToken(MINUS, "-", nil, 1),
-			&ExprLiteral{123},
-		},
+			NewExprLiteral(123),
+		),
 		NewToken(STAR, "*", nil, 1),
-		&ExprGrouping{
-			&ExprLiteral{45.67},
-		},
-	}
+		NewExprGrouping(
+			NewExprLiteral(45.67),
+		),
+	)
 
 	expected := "(* (- 123) (group 45.67))"
 	assert.Equal(t, expected, expr.print())
