@@ -8,6 +8,22 @@ type Parser struct {
 	length  int
 }
 
+type ParseError struct {
+	token *Token
+	msg   string
+}
+
+func (pe *ParseError) Error() string {
+	token := pe.token
+	position := ""
+	if token.typ == EOF {
+		position = "at end"
+	} else {
+		position = fmt.Sprintf(`at '%s'`, token.lexeme)
+	}
+	return fmt.Sprintf("line %d, %s, %s", token.line, position, pe.msg)
+}
+
 func NewParser(tokens []*Token) *Parser {
 	return &Parser{
 		tokens:  tokens,
@@ -23,7 +39,11 @@ func (p *Parser) Expression() Expr {
 func (p *Parser) Parse() (expr Expr, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("parse error: %v", e)
+			if pe, ok := e.(*ParseError); ok {
+				err = pe
+			} else {
+				panic(err)
+			}
 		}
 	}()
 
@@ -111,7 +131,7 @@ func (p *Parser) Primary() Expr {
 		return NewExprGrouping(expr)
 	}
 
-	panic(fmt.Sprintf("expect expression, got: %v", p.peek()))
+	panic(p.parseError("expect expression"))
 }
 
 /*----------  Helper Mehtods  ----------*/
@@ -156,5 +176,12 @@ func (p *Parser) consume(typ TokenType, msg string) {
 		p.advance()
 		return
 	}
-	panic(msg)
+	panic(p.parseError(msg))
+}
+
+func (p *Parser) parseError(msg string) *ParseError {
+	return &ParseError{
+		token: p.peek(),
+		msg:   msg,
+	}
 }

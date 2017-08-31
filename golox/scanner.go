@@ -26,9 +26,9 @@ func (s *Scanner) ScanTokens() ([]*Token, error) {
 	var tokens []*Token
 	for !s.isAtEnd() {
 		s.start = s.next
-		token, e := s.scanToken()
-		if e != nil {
-			return nil, errors.Wrap(e, fmt.Sprintf("line %d", s.line))
+		token, err := s.scanToken()
+		if err != nil {
+			return nil, fmt.Errorf("line %d, %v", s.line, err)
 		}
 		if token != nil {
 			tokens = append(tokens, token)
