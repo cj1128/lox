@@ -6,8 +6,11 @@ import (
 )
 
 type Expr interface {
-	print() string
+	Print() string
+	Eval() Val
 }
+
+/*----------  Literal  ----------*/
 
 type ExprLiteral struct {
 	value interface{}
@@ -17,9 +20,11 @@ func NewExprLiteral(val interface{}) *ExprLiteral {
 	return &ExprLiteral{val}
 }
 
-func (expr *ExprLiteral) print() string {
+func (expr *ExprLiteral) Print() string {
 	return fmt.Sprintf("%#v", expr.value)
 }
+
+/*----------  Unary  ----------*/
 
 type ExprUnary struct {
 	operator *Token
@@ -30,9 +35,11 @@ func NewExprUnary(operator *Token, operand Expr) *ExprUnary {
 	return &ExprUnary{operator, operand}
 }
 
-func (expr *ExprUnary) print() string {
+func (expr *ExprUnary) Print() string {
 	return parenthesize(expr.operator.lexeme, expr.operand)
 }
+
+/*----------  Binary  ----------*/
 
 type ExprBinary struct {
 	left     Expr
@@ -44,9 +51,11 @@ func NewExprBinary(left Expr, operator *Token, right Expr) *ExprBinary {
 	return &ExprBinary{left, operator, right}
 }
 
-func (expr *ExprBinary) print() string {
+func (expr *ExprBinary) Print() string {
 	return parenthesize(expr.operator.lexeme, expr.left, expr.right)
 }
+
+/*----------  Grouping  ----------*/
 
 type ExprGrouping struct {
 	operand Expr
@@ -56,7 +65,7 @@ func NewExprGrouping(operand Expr) *ExprGrouping {
 	return &ExprGrouping{operand}
 }
 
-func (expr *ExprGrouping) print() string {
+func (expr *ExprGrouping) Print() string {
 	return parenthesize("group", expr.operand)
 }
 
@@ -68,7 +77,7 @@ func parenthesize(name string, exprs ...Expr) string {
 
 	for _, expr := range exprs {
 		buf.WriteString(" ")
-		buf.WriteString(expr.print())
+		buf.WriteString(expr.Print())
 	}
 	buf.WriteString(")")
 

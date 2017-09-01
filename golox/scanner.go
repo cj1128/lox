@@ -1,4 +1,3 @@
-// Scanner implements
 package main
 
 import (
@@ -117,7 +116,7 @@ func (s *Scanner) scanNumber() (*Token, error) {
 		return nil, errors.Wrap(e, "can't parse number")
 	}
 
-	return s.newToken(NUMBER, n), nil
+	return s.newToken(NUMBER, Number(n)), nil
 }
 
 func (s *Scanner) scanIdentifier() *Token {

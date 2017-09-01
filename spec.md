@@ -2,6 +2,18 @@
 
 [Link](http://www.craftinginterpreters.com/the-lox-language.html)
 
+## Grammer
+
+```text
+expression -> equality
+equality -> comparison ( ( "!=" | "==" ) comparison )*
+comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )*
+addition -> multiplication ( ( "-" | "+" ) multiplication )*
+multiplication -> unary ( ( "*" | "/" ) unary)*
+unary -> ( "!" | "-" ) unary | primary
+primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")"
+```
+
 ## Dyanmic Typing
 
 ## Automatic Memory Management
