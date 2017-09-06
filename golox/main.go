@@ -21,7 +21,7 @@ func parseFlags() {
 
 func main() {
 	parseFlags()
-	lox := &Lox{}
+	lox := NewLox()
 	if scriptPath == "" {
 		scanner := bufio.NewScanner(os.Stdin)
 		fmt.Print("> ")

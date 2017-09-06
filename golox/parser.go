@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Parser struct {
 	tokens  []*Token
@@ -11,6 +13,10 @@ type Parser struct {
 type ParseError struct {
 	token *Token
 	msg   string
+}
+
+func NewParseError(token *Token, msg string) *ParseError {
+	return &ParseError{token, msg}
 }
 
 func (pe *ParseError) Error() string {
@@ -24,19 +30,12 @@ func (pe *ParseError) Error() string {
 	return fmt.Sprintf("line %d, %s, %s", token.line, position, pe.msg)
 }
 
-func NewParser(tokens []*Token) *Parser {
-	return &Parser{
-		tokens:  tokens,
-		current: 0,
-		length:  len(tokens),
-	}
+func NewParser() *Parser {
+	return &Parser{}
 }
 
-func (p *Parser) Expression() Expr {
-	return p.Equality()
-}
-
-func (p *Parser) Parse() (expr Expr, err error) {
+func (p *Parser) Parse(tokens []*Token) (result []Stmt, err error) {
+	p.reset(tokens)
 	defer func() {
 		if e := recover(); e != nil {
 			if pe, ok := e.(*ParseError); ok {
@@ -46,9 +45,81 @@ func (p *Parser) Parse() (expr Expr, err error) {
 			}
 		}
 	}()
-
-	expr = p.Expression()
+	for !p.isAtEnd() {
+		result = append(result, p.Declaration())
+	}
 	return
+}
+
+/*----------  Private Methods  ----------*/
+
+func (p *Parser) Declaration() (result Stmt) {
+	// defer func() {
+	// 	if err := recover(); err != nil {
+	// 		if _, ok := err.(*ParseError); ok {
+	// 			p.synchronize()
+	// 			result = nil
+	// 		}
+	// 	}
+	// }()
+
+	if p.match(VAR) {
+		result = p.VarDeclaration()
+	} else {
+		result = p.Statement()
+	}
+
+	return
+}
+
+func (p *Parser) VarDeclaration() Stmt {
+	name := p.consume(IDENTIFIER, "expect variable name")
+	var value Expr
+	if p.match(EQUAL) {
+		value = p.Expression()
+	}
+	p.consume(SEMICOLON, "expect ';' after variable declaration")
+	return NewStmtVarDecl(name, value)
+}
+
+func (p *Parser) Statement() Stmt {
+	if p.match(PRINT) {
+		return p.PrintStatement()
+	}
+	return p.ExpressionStatement()
+}
+
+func (p *Parser) PrintStatement() Stmt {
+	expr := p.Expression()
+	p.consume(SEMICOLON, "expect ';' after value")
+	return NewStmtPrint(expr)
+}
+
+func (p *Parser) ExpressionStatement() Stmt {
+	expr := p.Expression()
+	p.consume(SEMICOLON, "expect ';' after value")
+	return NewStmtExpression(expr)
+}
+
+func (p *Parser) Expression() Expr {
+	return p.Assignment()
+}
+
+func (p *Parser) Assignment() Expr {
+	expr := p.Equality()
+
+	if p.match(EQUAL) {
+		equal := p.previous()
+		value := p.Assignment()
+
+		if e, ok := expr.(*ExprVariable); ok {
+			return NewExprAssignment(e.name, value)
+		}
+
+		panic(NewParseError(equal, "invalid assignment target"))
+	}
+
+	return expr
 }
 
 func (p *Parser) Equality() Expr {
@@ -131,10 +202,20 @@ func (p *Parser) Primary() Expr {
 		return NewExprGrouping(expr)
 	}
 
-	panic(p.parseError("expect expression"))
+	if p.match(IDENTIFIER) {
+		return NewExprVariable(p.previous())
+	}
+
+	panic(NewParseError(p.peek(), "expect expression"))
 }
 
 /*----------  Helper Mehtods  ----------*/
+func (p *Parser) reset(tokens []*Token) {
+	p.tokens = tokens
+	p.length = len(tokens)
+	p.current = 0
+}
+
 func (p *Parser) isAtEnd() bool {
 	return p.peek().typ == EOF
 }
@@ -171,17 +252,12 @@ func (p *Parser) match(tokenTypes ...TokenType) bool {
 	return false
 }
 
-func (p *Parser) consume(typ TokenType, msg string) {
+func (p *Parser) consume(typ TokenType, msg string) *Token {
 	if p.check(typ) {
-		p.advance()
-		return
+		return p.advance()
 	}
-	panic(p.parseError(msg))
+	panic(NewParseError(p.peek(), msg))
 }
 
-func (p *Parser) parseError(msg string) *ParseError {
-	return &ParseError{
-		token: p.peek(),
-		msg:   msg,
-	}
+func (p *Parser) synchronize() {
 }

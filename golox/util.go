@@ -1,5 +1,9 @@
 package main
 
+import "fmt"
+
+var sprintf = fmt.Sprintf
+
 func isDigit(r rune) bool {
 	return r >= '0' && r <= '9'
 }

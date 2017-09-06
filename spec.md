@@ -5,14 +5,26 @@
 ## Grammer
 
 ```text
-expression -> equality
+program -> declaration* EOF
+declaration -> varDecl | statement
+varDecl -> "var" IDENTIFIER ("=" expression)? ";"
+statement -> exprStmt | printStmt
+exprStmt -> expression ";"
+printStmt -> "print" expression ";"
+expression -> assignment
+assignment -> IDENTIFIER "=" assignment | equality
 equality -> comparison ( ( "!=" | "==" ) comparison )*
 comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )*
 addition -> multiplication ( ( "-" | "+" ) multiplication )*
 multiplication -> unary ( ( "*" | "/" ) unary)*
 unary -> ( "!" | "-" ) unary | primary
-primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")"
+primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER
 ```
+
+## MISC
+
+- 全局变量允许重定义
+- 赋值是一个表达式，而不是statement
 
 ## Dyanmic Typing
 
@@ -50,7 +62,7 @@ primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")"
 
 ## Closures
 
-- 函数式一等对象
+- 函数是一等对象
 
 ## Classes
 

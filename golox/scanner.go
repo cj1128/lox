@@ -14,14 +14,14 @@ type Scanner struct {
 	line   int
 }
 
-func NewScanner(source string) *Scanner {
+func NewScanner() *Scanner {
 	return &Scanner{
-		source: []rune(source),
-		line:   1,
+		line: 1,
 	}
 }
 
-func (s *Scanner) ScanTokens() ([]*Token, error) {
+func (s *Scanner) ScanTokens(source string) ([]*Token, error) {
+	s.reset(source)
 	var tokens []*Token
 	for !s.isAtEnd() {
 		s.start = s.next
@@ -44,6 +44,12 @@ func (s *Scanner) ScanTokens() ([]*Token, error) {
 }
 
 /*----------  Private Methods  ----------*/
+func (s *Scanner) reset(source string) {
+	s.source = []rune(source)
+	s.start = 0
+	s.next = 0
+	s.line = 1
+}
 
 func (s *Scanner) isAtEnd() bool {
 	return s.next == len(s.source)

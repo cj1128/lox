@@ -2,33 +2,53 @@ package main
 
 import "fmt"
 
-type Lox struct{}
+type Lox struct {
+	Env
+	scanner *Scanner
+	parser  *Parser
+}
+
+/*----------  Public API  ----------*/
+
+func NewLox() *Lox {
+	return &Lox{
+		Env:     Env{},
+		scanner: NewScanner(),
+		parser:  NewParser(),
+	}
+}
 
 func (lox *Lox) Eval(source string) error {
-	scanner := NewScanner(source)
-
-	tokens, err := scanner.ScanTokens()
+	// scan
+	tokens, err := lox.scan(source)
 	if err != nil {
 		return fmt.Errorf("scan error: %v", err)
 	}
 
-	parser := NewParser(tokens)
-	expr, err := parser.Parse()
+	// parse
+	program, err := lox.parse(tokens)
 	if err != nil {
 		return fmt.Errorf("parse error: %v", err)
 	}
 
-	val, err := lox.interpreter(expr)
-	if err != nil {
+	if err := lox.interpret(program); err != nil {
 		return fmt.Errorf("runtime error: %v", err)
 	}
-
-	fmt.Println(val)
 
 	return nil
 }
 
-func (lox *Lox) interpreter(expr Expr) (val Val, err error) {
+/*----------  Private Methods  ----------*/
+
+func (lox *Lox) scan(source string) ([]*Token, error) {
+	return lox.scanner.ScanTokens(source)
+}
+
+func (lox *Lox) parse(tokens []*Token) ([]Stmt, error) {
+	return lox.parser.Parse(tokens)
+}
+
+func (lox *Lox) interpret(program []Stmt) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			if re, ok := e.(*RuntimeError); ok {
@@ -38,6 +58,8 @@ func (lox *Lox) interpreter(expr Expr) (val Val, err error) {
 			}
 		}
 	}()
-	val = expr.Eval()
+	for _, stmt := range program {
+		stmt.Run(lox)
+	}
 	return
 }

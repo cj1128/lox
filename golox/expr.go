@@ -2,12 +2,24 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 )
 
 type Expr interface {
-	Print() string
-	Eval() Val
+	Print() string // for debug
+	Eval(lox *Lox) Val
+}
+
+/*----------  Variable  ----------*/
+type ExprVariable struct {
+	name *Token
+}
+
+func NewExprVariable(name *Token) *ExprVariable {
+	return &ExprVariable{name}
+}
+
+func (expr *ExprVariable) Print() string {
+	return expr.name.lexeme
 }
 
 /*----------  Literal  ----------*/
@@ -21,7 +33,7 @@ func NewExprLiteral(val interface{}) *ExprLiteral {
 }
 
 func (expr *ExprLiteral) Print() string {
-	return fmt.Sprintf("%#v", expr.value)
+	return sprintf("%#v", expr.value)
 }
 
 /*----------  Unary  ----------*/
@@ -67,6 +79,20 @@ func NewExprGrouping(operand Expr) *ExprGrouping {
 
 func (expr *ExprGrouping) Print() string {
 	return parenthesize("group", expr.operand)
+}
+
+/*----------  Assignment  ----------*/
+type ExprAssignment struct {
+	name *Token
+	val  Expr
+}
+
+func NewExprAssignment(name *Token, val Expr) *ExprAssignment{
+	return &ExprAssignment{name, val}
+}
+
+func (expr *ExprAssignment) Print() string {
+	return sprintf("(assign %s %v)", expr.name.lexeme, expr.val)
 }
 
 /*----------  Helper Methods  ----------*/

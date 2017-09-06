@@ -18,16 +18,42 @@ func (re *RuntimeError) Error() string {
 	return fmt.Sprintf("line %d, %s", re.token.line, re.msg)
 }
 
+/*----------  Subsection comment block  ----------*/
+
+func (s *StmtPrint) Run(lox *Lox) {
+	val := s.expr.Eval(lox)
+	fmt.Println(val)
+}
+
+func (s *StmtExpression) Run(lox *Lox) {
+	s.expr.Eval(lox)
+}
+
+func (s *StmtVarDecl) Run(lox *Lox) {
+	var val Val
+	if s.value != nil {
+		val = s.value.Eval(lox)
+	}
+	lox.Define(s.name, val)
+}
+
+/*----------  Assignment  ----------*/
+func (expr *ExprAssignment) Eval(lox *Lox) Val {
+	val := expr.val.Eval(lox)
+	lox.Set(expr.name, val)
+	return val
+}
+
 /*----------  Literal  ----------*/
 
-func (expr *ExprLiteral) Eval() Val {
+func (expr *ExprLiteral) Eval(lox *Lox) Val {
 	return expr.value
 }
 
 /*----------  Unary  ----------*/
 
-func (expr *ExprUnary) Eval() Val {
-	value := expr.operand.Eval()
+func (expr *ExprUnary) Eval(lox *Lox) Val {
+	value := expr.operand.Eval(lox)
 	switch expr.operator.typ {
 	case BANG:
 		return !getTruthy(value)
@@ -40,9 +66,9 @@ func (expr *ExprUnary) Eval() Val {
 }
 
 /*----------  Binary  ----------*/
-func (expr *ExprBinary) Eval() Val {
-	left := expr.left.Eval()
-	right := expr.right.Eval()
+func (expr *ExprBinary) Eval(lox *Lox) Val {
+	left := expr.left.Eval(lox)
+	right := expr.right.Eval(lox)
 
 	checkNumberOperands := func() {
 		if isNumber(left) && isNumber(right) {
@@ -98,8 +124,13 @@ func (expr *ExprBinary) Eval() Val {
 
 /*----------  Grouping  ----------*/
 
-func (expr *ExprGrouping) Eval() Val {
-	return expr.operand.Eval()
+func (expr *ExprGrouping) Eval(lox *Lox) Val {
+	return expr.operand.Eval(lox)
+}
+
+/*----------  Variable  ----------*/
+func (expr *ExprVariable) Eval(lox *Lox) Val {
+	return lox.Get(expr.name)
 }
 
 /*----------  Helper Methods  ----------*/
