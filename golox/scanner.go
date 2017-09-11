@@ -20,7 +20,7 @@ func NewScanner() *Scanner {
 	}
 }
 
-func (s *Scanner) ScanTokens(source string) ([]*Token, error) {
+func (s *Scanner) Scan(source string) ([]*Token, error) {
 	s.reset(source)
 	var tokens []*Token
 	for !s.isAtEnd() {

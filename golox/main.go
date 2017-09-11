@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,24 +13,18 @@ var (
 )
 
 func parseFlags() {
-	kingpin.Arg("script", "specify script path, if none get input from stdin").StringVar(&scriptPath)
+	kingpin.Arg("script", "specify script path, if none, start REPL").StringVar(&scriptPath)
 	kingpin.CommandLine.HelpFlag.Short('h')
 	kingpin.Parse()
 }
 
 func main() {
 	parseFlags()
+
 	lox := NewLox()
+
 	if scriptPath == "" {
-		scanner := bufio.NewScanner(os.Stdin)
-		fmt.Print("> ")
-		for scanner.Scan() {
-			str := scanner.Text()
-			if err := lox.Eval(str); err != nil {
-				fmt.Println(err)
-			}
-			fmt.Print("> ")
-		}
+		lox.REPL()
 	} else {
 		buf, err := ioutil.ReadFile(scriptPath)
 		if err != nil {

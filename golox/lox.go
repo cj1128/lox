@@ -1,6 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
 
 type Lox struct {
 	env     *Env
@@ -20,13 +25,13 @@ func NewLox() *Lox {
 
 func (lox *Lox) Eval(source string) error {
 	// scan
-	tokens, err := lox.scan(source)
+	tokens, err := lox.scanner.Scan(source)
 	if err != nil {
 		return fmt.Errorf("scan error: %v", err)
 	}
 
 	// parse
-	program, err := lox.parse(tokens)
+	program, err := lox.parser.Parse(tokens)
 	if err != nil {
 		return fmt.Errorf("parse error: %v", err)
 	}
@@ -38,14 +43,57 @@ func (lox *Lox) Eval(source string) error {
 	return nil
 }
 
-/*----------  Private Methods  ----------*/
+func (lox *Lox) REPL() {
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Print("> ")
+	for scanner.Scan() {
+		str := scanner.Text()
 
-func (lox *Lox) scan(source string) ([]*Token, error) {
-	return lox.scanner.ScanTokens(source)
+		err := lox.Eval(str)
+
+		// TODO, this is a dirty hack, we need a better way to check
+		// whether err is ParseError
+		if err != nil && strings.Index(err.Error(), "parse error") == 0 {
+			val, e := lox.evalExpression(str)
+			if e != nil {
+				if strings.Index(e.Error(), "parse error") == 0 {
+					fmt.Println(err)
+				} else {
+					fmt.Println(e)
+				}
+			} else {
+				fmt.Println(val)
+			}
+		} else if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Print("> ")
+	}
 }
 
-func (lox *Lox) parse(tokens []*Token) ([]Stmt, error) {
-	return lox.parser.Parse(tokens)
+/*----------  Private Methods  ----------*/
+// used by REPL, source should be a whole expression
+func (lox *Lox) evalExpression(source string) (val Val, err error) {
+	tokens, err := lox.scanner.Scan(source)
+	if err != nil {
+		err = fmt.Errorf("scan error: %v", err)
+		return
+	}
+	lox.parser.reset(tokens)
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("%v", e)
+			return
+		}
+	}()
+	expr := lox.parser.Expression()
+	if lox.parser.isAtEnd() {
+		val = expr.Eval(lox.env)
+	} else {
+		err = fmt.Errorf("not a expression")
+	}
+	return
 }
 
 func (lox *Lox) interpret(program []Stmt) (err error) {
