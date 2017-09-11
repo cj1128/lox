@@ -17,9 +17,16 @@ declaration -> varDecl | statement
 varDecl -> "var" IDENTIFIER ("=" expression)? ";"
 ```
 
-## 增加赋值语法
+## 增加赋值语法，注意，赋值是一个表达式
 
 ```plain
 expression -> assignment
 assignment -> IDENTIFIER "=" assignment | equality
+```
+
+## 增加块语法
+
+```plain
+statement -> exprStmt | printStmt | block;
+block -> "{" declaration* "}"
 ```

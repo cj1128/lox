@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 type Lox struct {
-	Env
+	env     *Env
 	scanner *Scanner
 	parser  *Parser
 }
@@ -12,7 +12,7 @@ type Lox struct {
 
 func NewLox() *Lox {
 	return &Lox{
-		Env:     Env{},
+		env:     NewEnv(nil),
 		scanner: NewScanner(),
 		parser:  NewParser(),
 	}
@@ -59,7 +59,7 @@ func (lox *Lox) interpret(program []Stmt) (err error) {
 		}
 	}()
 	for _, stmt := range program {
-		stmt.Run(lox)
+		stmt.Run(lox.env)
 	}
 	return
 }

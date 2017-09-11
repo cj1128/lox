@@ -1,7 +1,7 @@
 package main
 
 type Stmt interface {
-	Run(lox *Lox)
+	Run(env *Env)
 }
 
 /*----------  Print Stmt  ----------*/
@@ -32,4 +32,13 @@ type StmtVarDecl struct {
 
 func NewStmtVarDecl(name *Token, value Expr) *StmtVarDecl {
 	return &StmtVarDecl{name, value}
+}
+
+/*----------  Block Stmt  ----------*/
+type StmtBlock struct {
+	stmts []Stmt
+}
+
+func NewStmtBlock(stmts []Stmt) *StmtBlock {
+	return &StmtBlock{stmts}
 }

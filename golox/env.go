@@ -1,23 +1,44 @@
 package main
 
-type Env map[string]Val
-
-func (e Env) Define(name *Token, val Val) {
-	e[name.lexeme] = val
+type Env struct {
+	prev *Env
+	m    map[string]Val
 }
 
-func (e Env) Get(name *Token) Val {
+func NewEnv(prev *Env) *Env {
+	return &Env{
+		prev,
+		map[string]Val{},
+	}
+}
+
+func (e *Env) Define(name *Token, val Val) {
+	e.m[name.lexeme] = val
+}
+
+func (e *Env) Get(name *Token) Val {
 	key := name.lexeme
 	if e.has(key) {
-		return e[key]
+		return e.m[key]
 	}
+
+	if e.prev != nil {
+		return e.prev.Get(name)
+	}
+
 	panic(NewRuntimeError(name, sprintf("undefined variable '%s'", key)))
 }
 
 func (e Env) Set(name *Token, val Val) {
 	key := name.lexeme
+
 	if e.has(key) {
-		e[key] = val
+		e.m[key] = val
+		return
+	}
+
+	if e.prev != nil {
+		e.prev.Set(name, val)
 		return
 	}
 
@@ -25,6 +46,6 @@ func (e Env) Set(name *Token, val Val) {
 }
 
 func (e Env) has(key string) bool {
-	_, ok := e[key]
+	_, ok := e.m[key]
 	return ok
 }

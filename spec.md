@@ -8,7 +8,8 @@
 program -> declaration* EOF
 declaration -> varDecl | statement
 varDecl -> "var" IDENTIFIER ("=" expression)? ";"
-statement -> exprStmt | printStmt
+statement -> exprStmt | printStmt | block
+block -> "{" declaration* "}"
 exprStmt -> expression ";"
 printStmt -> "print" expression ";"
 expression -> assignment

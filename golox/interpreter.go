@@ -18,42 +18,49 @@ func (re *RuntimeError) Error() string {
 	return fmt.Sprintf("line %d, %s", re.token.line, re.msg)
 }
 
-/*----------  Subsection comment block  ----------*/
+/*---------- Stmts ----------*/
 
-func (s *StmtPrint) Run(lox *Lox) {
-	val := s.expr.Eval(lox)
+func (s *StmtPrint) Run(env *Env) {
+	val := s.expr.Eval(env)
 	fmt.Println(val)
 }
 
-func (s *StmtExpression) Run(lox *Lox) {
-	s.expr.Eval(lox)
+func (s *StmtExpression) Run(env *Env) {
+	s.expr.Eval(env)
 }
 
-func (s *StmtVarDecl) Run(lox *Lox) {
+func (s *StmtVarDecl) Run(env *Env) {
 	var val Val
 	if s.value != nil {
-		val = s.value.Eval(lox)
+		val = s.value.Eval(env)
 	}
-	lox.Define(s.name, val)
+	env.Define(s.name, val)
+}
+
+func (s *StmtBlock) Run(env *Env) {
+	newEnv := NewEnv(env)
+	for _, stmt := range s.stmts {
+		stmt.Run(newEnv)
+	}
 }
 
 /*----------  Assignment  ----------*/
-func (expr *ExprAssignment) Eval(lox *Lox) Val {
-	val := expr.val.Eval(lox)
-	lox.Set(expr.name, val)
+func (expr *ExprAssignment) Eval(env *Env) Val {
+	val := expr.val.Eval(env)
+	env.Set(expr.name, val)
 	return val
 }
 
 /*----------  Literal  ----------*/
 
-func (expr *ExprLiteral) Eval(lox *Lox) Val {
+func (expr *ExprLiteral) Eval(env *Env) Val {
 	return expr.value
 }
 
 /*----------  Unary  ----------*/
 
-func (expr *ExprUnary) Eval(lox *Lox) Val {
-	value := expr.operand.Eval(lox)
+func (expr *ExprUnary) Eval(env *Env) Val {
+	value := expr.operand.Eval(env)
 	switch expr.operator.typ {
 	case BANG:
 		return !getTruthy(value)
@@ -66,9 +73,9 @@ func (expr *ExprUnary) Eval(lox *Lox) Val {
 }
 
 /*----------  Binary  ----------*/
-func (expr *ExprBinary) Eval(lox *Lox) Val {
-	left := expr.left.Eval(lox)
-	right := expr.right.Eval(lox)
+func (expr *ExprBinary) Eval(env *Env) Val {
+	left := expr.left.Eval(env)
+	right := expr.right.Eval(env)
 
 	checkNumberOperands := func() {
 		if isNumber(left) && isNumber(right) {
@@ -124,13 +131,13 @@ func (expr *ExprBinary) Eval(lox *Lox) Val {
 
 /*----------  Grouping  ----------*/
 
-func (expr *ExprGrouping) Eval(lox *Lox) Val {
-	return expr.operand.Eval(lox)
+func (expr *ExprGrouping) Eval(env *Env) Val {
+	return expr.operand.Eval(env)
 }
 
 /*----------  Variable  ----------*/
-func (expr *ExprVariable) Eval(lox *Lox) Val {
-	return lox.Get(expr.name)
+func (expr *ExprVariable) Eval(env *Env) Val {
+	return env.Get(expr.name)
 }
 
 /*----------  Helper Methods  ----------*/

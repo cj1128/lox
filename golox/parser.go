@@ -86,7 +86,21 @@ func (p *Parser) Statement() Stmt {
 	if p.match(PRINT) {
 		return p.PrintStatement()
 	}
+
+	if p.match(LEFT_BRACE) {
+		return NewStmtBlock(p.Block())
+	}
+
 	return p.ExpressionStatement()
+}
+
+func (p *Parser) Block() []Stmt {
+	var stmts []Stmt
+	for !p.check(RIGHT_BRACE) && !p.isAtEnd() {
+		stmts = append(stmts, p.Declaration())
+	}
+	p.consume(RIGHT_BRACE, "expect '}' after block")
+	return stmts
 }
 
 func (p *Parser) PrintStatement() Stmt {

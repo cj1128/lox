@@ -6,7 +6,7 @@ import (
 
 type Expr interface {
 	Print() string // for debug
-	Eval(lox *Lox) Val
+	Eval(env *Env) Val
 }
 
 /*----------  Variable  ----------*/
@@ -87,7 +87,7 @@ type ExprAssignment struct {
 	val  Expr
 }
 
-func NewExprAssignment(name *Token, val Expr) *ExprAssignment{
+func NewExprAssignment(name *Token, val Expr) *ExprAssignment {
 	return &ExprAssignment{name, val}
 }
 
