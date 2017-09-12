@@ -95,6 +95,21 @@ func (expr *ExprAssignment) Print() string {
 	return sprintf("(assign %s %v)", expr.name.lexeme, expr.val)
 }
 
+/*----------  Logical  ----------*/
+type ExprLogical struct {
+	left     Expr
+	operator *Token
+	right    Expr
+}
+
+func NewExprLogical(left Expr, operator *Token, right Expr) *ExprLogical {
+	return &ExprLogical{left, operator, right}
+}
+
+func (expr *ExprLogical) Print() string {
+	return parenthesize(expr.operator.lexeme, expr.left, expr.right)
+}
+
 /*----------  Helper Methods  ----------*/
 func parenthesize(name string, exprs ...Expr) string {
 	buf := &bytes.Buffer{}

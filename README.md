@@ -16,7 +16,7 @@ golox // you can run binary now
 this is some modifications to lox.
 
 - make function keyword be `func` rather than `fun`
-- handle nested block-comment(`/* … */`)
+- handle nested block-comment(`/* /* ... */ */`)
 
 ## Lox Spec
 

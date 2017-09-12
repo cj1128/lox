@@ -42,3 +42,24 @@ type StmtBlock struct {
 func NewStmtBlock(stmts []Stmt) *StmtBlock {
 	return &StmtBlock{stmts}
 }
+
+/*----------  If Stmt  ----------*/
+type StmtIf struct {
+	condition   Expr
+	trueBranch  Stmt
+	falseBranch Stmt
+}
+
+func NewStmtIf(condition Expr, trueBranch, falseBranch Stmt) *StmtIf {
+	return &StmtIf{condition, trueBranch, falseBranch}
+}
+
+/*----------  While Stmt  ----------*/
+type StmtWhile struct {
+	condition Expr
+	body      Stmt
+}
+
+func NewStmtWhile(condition Expr, body Stmt) *StmtWhile {
+	return &StmtWhile{condition, body}
+}

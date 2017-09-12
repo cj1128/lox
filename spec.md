@@ -2,13 +2,30 @@
 
 [Link](http://www.craftinginterpreters.com/the-lox-language.html)
 
+## Operators
+
+|      Name      |      Operators       | Associativity |
+| :------------: | :------------------: | :-----------: |
+|     Unary      |       `!`, `+`       |     Right     |
+| Multiplication |       `*`, `/`       |     Left      |
+|    Addition    |       `+`, `-`       |     Left      |
+|   Comparison   | `>`, `>=`, `<`, `<=` |     Left      |
+|  Logical And   |        `and`         |     Left      |
+|   Logical Or   |         `or`         |     Left      |
+|    Equality    |      `==`, `!=`      |     Left      |
+
 ## Grammer
 
 ```text
 program -> declaration* EOF
 declaration -> varDecl | statement
 varDecl -> "var" IDENTIFIER ("=" expression)? ";"
-statement -> exprStmt | printStmt | block
+statement -> exprStmt | printStmt | block | ifStmt | whileStmt | forStmt
+forStmt -> "for" "(" ( varDecl | exprStmt | ";" )
+                      expression? ";"
+                      expression? ")" statement
+whileStmt -> "while" "(" expression ")" statement
+ifStmt -> "if" "(" expression ")" statement ( "else" statement )?
 block -> "{" declaration* "}"
 exprStmt -> expression ";"
 printStmt -> "print" expression ";"

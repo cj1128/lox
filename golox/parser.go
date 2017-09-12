@@ -88,13 +88,95 @@ func (p *Parser) Statement() Stmt {
 	}
 
 	if p.match(LEFT_BRACE) {
-		return NewStmtBlock(p.Block())
+		return NewStmtBlock(p.BlockStatement())
+	}
+
+	if p.match(IF) {
+		return p.IfStatement()
+	}
+
+	if p.match(WHILE) {
+		return p.WhileStatement()
+	}
+
+	if p.match(FOR) {
+		return p.ForStatement()
 	}
 
 	return p.ExpressionStatement()
 }
 
-func (p *Parser) Block() []Stmt {
+// desugar for to while statement
+func (p *Parser) ForStatement() Stmt {
+	p.consume(LEFT_PAREN, "expect '(' after for")
+	var initializer Stmt
+
+	if !p.check(SEMICOLON) {
+		if p.match(VAR) {
+			initializer = p.VarDeclaration()
+		} else {
+			initializer = p.ExpressionStatement()
+		}
+	}
+
+	var condition Expr
+	if !p.check(SEMICOLON) {
+		condition = p.Expression()
+	}
+	p.consume(SEMICOLON, "expect ';' after loop condition")
+
+	var increment Expr
+	if !p.check(RIGHT_PAREN) {
+		increment = p.Expression()
+	}
+	p.consume(RIGHT_PAREN, "expect ')' after clauses")
+
+	body := p.Statement()
+
+	if increment != nil {
+		body = NewStmtBlock([]Stmt{
+			body,
+			NewStmtExpression(increment),
+		})
+	}
+
+	if condition == nil {
+		condition = NewExprLiteral(true)
+	}
+	body = NewStmtWhile(condition, body)
+
+	if initializer != nil {
+		body = NewStmtBlock([]Stmt{
+			initializer,
+			body,
+		})
+	}
+
+	return body
+}
+
+func (p *Parser) WhileStatement() Stmt {
+	p.consume(LEFT_PAREN, "expect '(' after while")
+	condition := p.Expression()
+	p.consume(RIGHT_PAREN, "expect ')' after condition")
+	body := p.Statement()
+	return NewStmtWhile(condition, body)
+}
+
+func (p *Parser) IfStatement() Stmt {
+	p.consume(LEFT_PAREN, "expect '(' after if")
+	condition := p.Expression()
+	p.consume(RIGHT_PAREN, "expect ')' after if condition")
+	trueBranch := p.Statement()
+	var falseBranch Stmt
+
+	if p.match(ELSE) {
+		falseBranch = p.Statement()
+	}
+	return NewStmtIf(condition, trueBranch, falseBranch)
+}
+
+func (p *Parser) BlockStatement() []Stmt {
 	var stmts []Stmt
 	for !p.check(RIGHT_BRACE) && !p.isAtEnd() {
 		stmts = append(stmts, p.Declaration())
@@ -120,7 +202,7 @@ func (p *Parser) Expression() Expr {
 }
 
 func (p *Parser) Assignment() Expr {
-	expr := p.Equality()
+	expr := p.LogicalOr()
 
 	if p.match(EQUAL) {
 		equal := p.previous()
@@ -131,6 +213,30 @@ func (p *Parser) Assignment() Expr {
 		}
 
 		panic(NewParseError(equal, "invalid assignment target"))
+	}
+
+	return expr
+}
+
+func (p *Parser) LogicalOr() Expr {
+	expr := p.LogicalAnd()
+
+	for p.match(OR) {
+		operator := p.previous()
+		right := p.LogicalAnd()
+		expr = NewExprLogical(expr, operator, right)
+	}
+
+	return expr
+}
+
+func (p *Parser) LogicalAnd() Expr {
+	expr := p.Equality()
+
+	for p.match(AND) {
+		operator := p.previous()
+		right := p.Equality()
+		expr = NewExprLogical(expr, operator, right)
 	}
 
 	return expr

@@ -44,6 +44,23 @@ func (s *StmtBlock) Run(env *Env) {
 	}
 }
 
+func (s *StmtIf) Run(env *Env) {
+	val := s.condition.Eval(env)
+	if getTruthy(val) {
+		s.trueBranch.Run(env)
+	} else {
+		if s.falseBranch != nil {
+			s.falseBranch.Run(env)
+		}
+	}
+}
+
+func (s *StmtWhile) Run(env *Env) {
+	for getTruthy(s.condition.Eval(env)) {
+		s.body.Run(env)
+	}
+}
+
 /*----------  Assignment  ----------*/
 func (expr *ExprAssignment) Eval(env *Env) Val {
 	val := expr.val.Eval(env)
@@ -138,6 +155,21 @@ func (expr *ExprGrouping) Eval(env *Env) Val {
 /*----------  Variable  ----------*/
 func (expr *ExprVariable) Eval(env *Env) Val {
 	return env.Get(expr.name)
+}
+
+/*----------  Logical  ----------*/
+func (expr *ExprLogical) Eval(env *Env) Val {
+	val := expr.left.Eval(env)
+	if expr.operator.typ == OR {
+		if getTruthy(val) {
+			return val
+		}
+	} else {
+		if !getTruthy(val) {
+			return val
+		}
+	}
+	return expr.right.Eval(env)
 }
 
 /*----------  Helper Methods  ----------*/
