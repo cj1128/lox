@@ -14,20 +14,33 @@ func NewRuntimeError(token *Token, msg string) *RuntimeError {
 	return &RuntimeError{token, msg}
 }
 
+// we use exception as control flow
+type FunctionReturn struct {
+	value Val
+}
+
+func NewFunctionReturn(value Val) *FunctionReturn {
+	return &FunctionReturn{value}
+}
+
 func (re *RuntimeError) Error() string {
 	return fmt.Sprintf("line %d, %s", re.token.line, re.msg)
 }
 
-/*---------- Stmts ----------*/
+/*----------  Stmt: Print  ----------*/
 
 func (s *StmtPrint) Run(env *Env) {
 	val := s.expr.Eval(env)
 	fmt.Println(val)
 }
 
+/*----------  Stmt: Expression  ----------*/
+
 func (s *StmtExpression) Run(env *Env) {
 	s.expr.Eval(env)
 }
+
+/*----------  Stmt: Variable Declaration  ----------*/
 
 func (s *StmtVarDecl) Run(env *Env) {
 	var val Val
@@ -37,12 +50,16 @@ func (s *StmtVarDecl) Run(env *Env) {
 	env.Define(s.name.lexeme, val)
 }
 
+/*----------  Stmt: Block  ----------*/
+
 func (s *StmtBlock) Run(env *Env) {
 	newEnv := NewEnv(env)
 	for _, stmt := range s.stmts {
 		stmt.Run(newEnv)
 	}
 }
+
+/*----------  Stmt: If  ----------*/
 
 func (s *StmtIf) Run(env *Env) {
 	val := s.condition.Eval(env)
@@ -55,30 +72,46 @@ func (s *StmtIf) Run(env *Env) {
 	}
 }
 
+/*----------  Stmt: While  ----------*/
+
 func (s *StmtWhile) Run(env *Env) {
 	for getTruthy(s.condition.Eval(env)) {
 		s.body.Run(env)
 	}
 }
 
+/*----------  Stmt: Function Declaration  ----------*/
+
 func (s *StmtFuncDecl) Run(env *Env) {
+	s.closure = env
 	env.Define(s.name.lexeme, s)
 }
 
-/*----------  Assignment  ----------*/
+/*----------  Stmt: Return  ----------*/
+
+func (s *StmtReturn) Run(env *Env) {
+	var value Val
+	if s.value != nil {
+		value = s.value.Eval(env)
+	}
+	panic(NewFunctionReturn(value))
+}
+
+/*----------  Expr: Assignment  ----------*/
+
 func (expr *ExprAssignment) Eval(env *Env) Val {
 	val := expr.val.Eval(env)
 	env.Set(expr.name, val)
 	return val
 }
 
-/*----------  Literal  ----------*/
+/*----------  Expr: Literal  ----------*/
 
 func (expr *ExprLiteral) Eval(env *Env) Val {
 	return expr.value
 }
 
-/*----------  Unary  ----------*/
+/*----------  Expr: Unary  ----------*/
 
 func (expr *ExprUnary) Eval(env *Env) Val {
 	value := expr.operand.Eval(env)
@@ -86,14 +119,14 @@ func (expr *ExprUnary) Eval(env *Env) Val {
 	case BANG:
 		return !getTruthy(value)
 	case MINUS:
-		return -(value.(float64))
+		return -(value.(Number))
 	}
 
 	// unreachable
 	panic("should neven reach here")
 }
 
-/*----------  Binary  ----------*/
+/*----------  Expr: Binary  ----------*/
 func (expr *ExprBinary) Eval(env *Env) Val {
 	left := expr.left.Eval(env)
 	right := expr.right.Eval(env)
@@ -150,18 +183,20 @@ func (expr *ExprBinary) Eval(env *Env) Val {
 	panic("should neven reach here")
 }
 
-/*----------  Grouping  ----------*/
+/*----------  Expr: Grouping  ----------*/
 
 func (expr *ExprGrouping) Eval(env *Env) Val {
 	return expr.operand.Eval(env)
 }
 
-/*----------  Variable  ----------*/
+/*----------  Expr: Variable  ----------*/
+
 func (expr *ExprVariable) Eval(env *Env) Val {
 	return env.Get(expr.name)
 }
 
-/*----------  Logical  ----------*/
+/*----------  Expr: Logical  ----------*/
+
 func (expr *ExprLogical) Eval(env *Env) Val {
 	val := expr.left.Eval(env)
 	if expr.operator.typ == OR {
@@ -176,7 +211,8 @@ func (expr *ExprLogical) Eval(env *Env) Val {
 	return expr.right.Eval(env)
 }
 
-/*----------  Function Call  ----------*/
+/*----------  Expr: Function Call  ----------*/
+
 func (expr *ExprCall) Eval(env *Env) Val {
 	callee := expr.callee.Eval(env)
 	var arguments []Val

@@ -69,8 +69,20 @@ type StmtFuncDecl struct {
 	name       *Token
 	parameters []*Token
 	body       []Stmt
+	// 运行时赋值
+	closure *Env
 }
 
 func NewStmtFuncDecl(name *Token, parameters []*Token, body []Stmt) *StmtFuncDecl {
-	return &StmtFuncDecl{name, parameters, body}
+	return &StmtFuncDecl{name, parameters, body, nil}
+}
+
+/*----------  Return Stmt  ----------*/
+type StmtReturn struct {
+	token *Token
+	value Expr
+}
+
+func NewStmtReturn(token *Token, value Expr) *StmtReturn {
+	return &StmtReturn{token, value}
 }

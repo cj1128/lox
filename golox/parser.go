@@ -126,7 +126,22 @@ func (p *Parser) Statement() Stmt {
 		return p.ForStatement()
 	}
 
+	if p.match(RETURN) {
+		return p.ReturnStatement()
+
+	}
+
 	return p.ExpressionStatement()
+}
+
+func (p *Parser) ReturnStatement() Stmt {
+	token := p.previous()
+	var value Expr
+	if !p.check(SEMICOLON) {
+		value = p.Expression()
+	}
+	p.consume(SEMICOLON, "expect ';' after return value")
+	return NewStmtReturn(token, value)
 }
 
 // desugar for to while statement

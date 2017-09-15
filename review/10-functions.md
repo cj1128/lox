@@ -16,3 +16,10 @@ funcDecl -> "func" function
 function -> IDENTIFIER "(" parameters? ")" block
 parameters -> IDENTIFIER ( "," IDENTIFIER )*
 ```
+
+## 加入函数返回语法
+
+```plain
+statement -> exprStmt | printStmt | block | ifStmt | whileStmt | forStmt | returnStmt
+returnStmt -> "return" expression? ";"
+```

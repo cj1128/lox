@@ -49,6 +49,7 @@ primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDE
 - 全局变量允许重定义
 - 赋值是一个表达式，而不是statement
 - 为了和C实现兼容，函数参数个数最多为8个
+- 函数隐式返回`nil`
 
 ## Dyanmic Typing
 
