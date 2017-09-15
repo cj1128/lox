@@ -17,7 +17,7 @@ type Lox struct {
 
 func NewLox() *Lox {
 	return &Lox{
-		env:     NewEnv(nil),
+		env:     NewEnv(globalEnv),
 		scanner: NewScanner(),
 		parser:  NewParser(),
 	}

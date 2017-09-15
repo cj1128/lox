@@ -12,8 +12,8 @@ func NewEnv(prev *Env) *Env {
 	}
 }
 
-func (e *Env) Define(name *Token, val Val) {
-	e.m[name.lexeme] = val
+func (e *Env) Define(name string, val Val) {
+	e.m[name] = val
 }
 
 func (e *Env) Get(name *Token) Val {

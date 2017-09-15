@@ -63,13 +63,36 @@ func (p *Parser) Declaration() (result Stmt) {
 	// 	}
 	// }()
 
-	if p.match(VAR) {
+	switch true {
+	case p.match(VAR):
 		result = p.VarDeclaration()
-	} else {
+	case p.match(FUNC):
+		result = p.FuncDeclaration("function")
+	default:
 		result = p.Statement()
 	}
 
 	return
+}
+
+// kind should be one of: `function`
+func (p *Parser) FuncDeclaration(kind string) Stmt {
+	name := p.consume(IDENTIFIER, "expect "+kind+" name")
+	p.consume(LEFT_PAREN, "expect '(' after "+kind+" name")
+	var parameters []*Token
+	if !p.check(RIGHT_PAREN) {
+		parameters = append(parameters, p.consume(IDENTIFIER, "expect parameter name"))
+		for p.match(COMMA) {
+			if len(parameters) == 8 {
+				panic(NewParseError(p.peek(), "can't have more than 8 arguments"))
+			}
+			parameters = append(parameters, p.consume(IDENTIFIER, "expect parameter name"))
+		}
+	}
+	p.consume(RIGHT_PAREN, "expect ')' after parameters")
+	p.consume(LEFT_BRACE, "expect '{' after "+kind+" body")
+	body := p.BlockStatement()
+	return NewStmtFuncDecl(name, parameters, body)
 }
 
 func (p *Parser) VarDeclaration() Stmt {
@@ -296,7 +319,19 @@ func (p *Parser) Unary() Expr {
 		return NewExprUnary(operator, operand)
 	}
 
-	return p.Primary()
+	return p.Call()
+}
+
+func (p *Parser) Call() Expr {
+	expr := p.Primary()
+	for true {
+		if p.match(LEFT_PAREN) {
+			expr = p.finishCall(expr)
+		} else {
+			break
+		}
+	}
+	return expr
 }
 
 func (p *Parser) Primary() Expr {
@@ -377,6 +412,24 @@ func (p *Parser) consume(typ TokenType, msg string) *Token {
 		return p.advance()
 	}
 	panic(NewParseError(p.peek(), msg))
+}
+
+func (p *Parser) finishCall(callee Expr) Expr {
+	var arguments []Expr
+	if !p.check(RIGHT_PAREN) {
+		arguments = append(arguments, p.Expression())
+		for p.match(COMMA) {
+			// in order to compitable with C implementation, we limit
+			// argument size
+			if len(arguments) >= 8 {
+				panic(NewParseError(p.peek(), "can't have more than 8 arguments"))
+			}
+			arguments = append(arguments, p.Expression())
+		}
+	}
+
+	paren := p.consume(RIGHT_PAREN, "exepct ')' after function arguments")
+	return NewExprCall(callee, paren, arguments)
 }
 
 func (p *Parser) synchronize() {

@@ -18,7 +18,10 @@
 
 ```text
 program -> declaration* EOF
-declaration -> varDecl | statement
+declaration -> funcDecl | varDecl | statement
+funcDecl -> "func" function
+function -> IDENTIFIER "(" arguments? ")" block
+parameters -> IDENTIFIER ( "," IDENTIFIER )*
 varDecl -> "var" IDENTIFIER ("=" expression)? ";"
 statement -> exprStmt | printStmt | block | ifStmt | whileStmt | forStmt
 forStmt -> "for" "(" ( varDecl | exprStmt | ";" )
@@ -35,7 +38,9 @@ equality -> comparison ( ( "!=" | "==" ) comparison )*
 comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )*
 addition -> multiplication ( ( "-" | "+" ) multiplication )*
 multiplication -> unary ( ( "*" | "/" ) unary)*
-unary -> ( "!" | "-" ) unary | primary
+unary -> ( "!" | "-" ) unary | call
+call -> primary ( "(" arguments? ")" )*
+arguments -> expression ( "," expression )*
 primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER
 ```
 
@@ -43,6 +48,7 @@ primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDE
 
 - 全局变量允许重定义
 - 赋值是一个表达式，而不是statement
+- 为了和C实现兼容，函数参数个数最多为8个
 
 ## Dyanmic Typing
 

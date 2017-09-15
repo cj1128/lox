@@ -34,7 +34,7 @@ func (s *StmtVarDecl) Run(env *Env) {
 	if s.value != nil {
 		val = s.value.Eval(env)
 	}
-	env.Define(s.name, val)
+	env.Define(s.name.lexeme, val)
 }
 
 func (s *StmtBlock) Run(env *Env) {
@@ -59,6 +59,10 @@ func (s *StmtWhile) Run(env *Env) {
 	for getTruthy(s.condition.Eval(env)) {
 		s.body.Run(env)
 	}
+}
+
+func (s *StmtFuncDecl) Run(env *Env) {
+	env.Define(s.name.lexeme, s)
 }
 
 /*----------  Assignment  ----------*/
@@ -170,6 +174,25 @@ func (expr *ExprLogical) Eval(env *Env) Val {
 		}
 	}
 	return expr.right.Eval(env)
+}
+
+/*----------  Function Call  ----------*/
+func (expr *ExprCall) Eval(env *Env) Val {
+	callee := expr.callee.Eval(env)
+	var arguments []Val
+	for _, arg := range expr.arguments {
+		arguments = append(arguments, arg.Eval(env))
+	}
+	if function, ok := callee.(Callable); ok {
+		expected := function.Arity()
+		got := len(arguments)
+		if expected != got {
+			panic(NewRuntimeError(expr.paren, fmt.Sprintf("expect %d arguments but got %d", expected, got)))
+		}
+		return function.Call(env, arguments)
+	} else {
+		panic(NewRuntimeError(expr.paren, "can only call functions and classes"))
+	}
 }
 
 /*----------  Helper Methods  ----------*/

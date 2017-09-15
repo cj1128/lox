@@ -110,6 +110,22 @@ func (expr *ExprLogical) Print() string {
 	return parenthesize(expr.operator.lexeme, expr.left, expr.right)
 }
 
+/*----------  Function Call  ----------*/
+type ExprCall struct {
+	callee Expr
+	// close paren
+	paren     *Token
+	arguments []Expr
+}
+
+func NewExprCall(callee Expr, paren *Token, arguments []Expr) Expr {
+	return &ExprCall{callee, paren, arguments}
+}
+
+func (expr *ExprCall) Print() string {
+	return parenthesize(expr.callee.Print(), expr.arguments...)
+}
+
 /*----------  Helper Methods  ----------*/
 func parenthesize(name string, exprs ...Expr) string {
 	buf := &bytes.Buffer{}

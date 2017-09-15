@@ -63,3 +63,14 @@ type StmtWhile struct {
 func NewStmtWhile(condition Expr, body Stmt) *StmtWhile {
 	return &StmtWhile{condition, body}
 }
+
+/*----------  Function Declaration Stmt  ----------*/
+type StmtFuncDecl struct {
+	name       *Token
+	parameters []*Token
+	body       []Stmt
+}
+
+func NewStmtFuncDecl(name *Token, parameters []*Token, body []Stmt) *StmtFuncDecl {
+	return &StmtFuncDecl{name, parameters, body}
+}
