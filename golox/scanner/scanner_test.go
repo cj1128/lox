@@ -1,4 +1,4 @@
-package main
+package scanner
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -13,8 +13,7 @@ func TestScannerOverall(t *testing.T) {
   identifier "string" 1.234
   and class else func for if nil or print return super this true false var while
 `
-	scanner := NewScanner(src)
-	tokens, err := scanner.ScanTokens()
+	tokens, err := Scan(src)
 
 	assert.Nil(err)
 
@@ -67,34 +66,43 @@ func TestScannerOverall(t *testing.T) {
 
 func TestScannerError(t *testing.T) {
 	t.Run("unterminated string", func(t *testing.T) {
-		scanner := NewScanner(`"unterminated string`)
-		_, err := scanner.ScanTokens()
+		_, err := Scan(`"unterminated string`)
 		assert.NotNil(t, err)
 	})
 }
 
 func TestScannerComment(t *testing.T) {
 	t.Run("line comment", func(t *testing.T) {
-		scanner := NewScanner(`
+		tokens, err := Scan(`
       // this should be ignored
       +
-    `)
-		tokens, err := scanner.ScanTokens()
+		`)
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(tokens))
+		expected := &Token{
+			Type:    PLUS,
+			Lexeme:  "+",
+			Literal: nil,
+			Line:    3,
+		}
+		assert.Equal(t, expected, tokens[0])
 	})
 
 	t.Run("block comment", func(t *testing.T) {
-		scanner := NewScanner(`
+		tokens, err := Scan(`
       /*
         /*
            hello world
         */
       */
       +
-    `)
-		tokens, err := scanner.ScanTokens()
+		`)
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(tokens))
+		expected := &Token{
+			Type:    PLUS,
+			Lexeme:  "+",
+			Literal: nil,
+			Line:    7,
+		}
+		assert.Equal(t, expected, tokens[0])
 	})
 }

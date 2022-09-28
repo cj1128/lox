@@ -1,16 +1,19 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"cjting.me/lox/scanner"
+)
 
 type Val interface{}
-type Number float64
 
 type RuntimeError struct {
-	token *Token
+	token *scanner.Token
 	msg   string
 }
 
-func NewRuntimeError(token *Token, msg string) *RuntimeError {
+func NewRuntimeError(token *scanner.Token, msg string) *RuntimeError {
 	return &RuntimeError{token, msg}
 }
 
@@ -24,7 +27,7 @@ func NewFunctionReturn(value Val) *FunctionReturn {
 }
 
 func (re *RuntimeError) Error() string {
-	return fmt.Sprintf("line %d, %s", re.token.line, re.msg)
+	return fmt.Sprintf("line %d, %s", re.token.Line, re.msg)
 }
 
 /*----------  Stmt: Print  ----------*/
@@ -47,7 +50,7 @@ func (s *StmtVarDecl) Run(env *Env) {
 	if s.value != nil {
 		val = s.value.Eval(env)
 	}
-	env.Define(s.name.lexeme, val)
+	env.Define(s.name.Lexeme, val)
 }
 
 /*----------  Stmt: Block  ----------*/
@@ -84,7 +87,7 @@ func (s *StmtWhile) Run(env *Env) {
 
 func (s *StmtFuncDecl) Run(env *Env) {
 	s.closure = env
-	env.Define(s.name.lexeme, s)
+	env.Define(s.name.Lexeme, s)
 }
 
 /*----------  Stmt: Return  ----------*/
@@ -115,11 +118,11 @@ func (expr *ExprLiteral) Eval(env *Env) Val {
 
 func (expr *ExprUnary) Eval(env *Env) Val {
 	value := expr.operand.Eval(env)
-	switch expr.operator.typ {
-	case BANG:
+	switch expr.operator.Type {
+	case scanner.BANG:
 		return !getTruthy(value)
-	case MINUS:
-		return -(value.(Number))
+	case scanner.MINUS:
+		return -(value.(scanner.Number))
 	}
 
 	// unreachable
@@ -138,8 +141,8 @@ func (expr *ExprBinary) Eval(env *Env) Val {
 		panic(NewRuntimeError(expr.operator, "operands must be numbers"))
 	}
 
-	switch expr.operator.typ {
-	case PLUS:
+	switch expr.operator.Type {
+	case scanner.PLUS:
 		if isNumber(left) && isNumber(right) {
 			return toNumber(left) + toNumber(right)
 		}
@@ -147,10 +150,10 @@ func (expr *ExprBinary) Eval(env *Env) Val {
 			return toString(left) + toString(right)
 		}
 		panic(NewRuntimeError(expr.operator, "operands must be two numbers or two strings"))
-	case MINUS:
+	case scanner.MINUS:
 		checkNumberOperands()
 		return toNumber(left) - toNumber(right)
-	case SLASH:
+	case scanner.SLASH:
 		checkNumberOperands()
 		// catch divide by zero
 		r := toNumber(right)
@@ -158,24 +161,24 @@ func (expr *ExprBinary) Eval(env *Env) Val {
 			panic(NewRuntimeError(expr.operator, "divide by zero"))
 		}
 		return toNumber(left) / r
-	case STAR:
+	case scanner.STAR:
 		checkNumberOperands()
 		return toNumber(left) * toNumber(right)
-	case GREATER:
+	case scanner.GREATER:
 		checkNumberOperands()
 		return toNumber(left) > toNumber(right)
-	case GREATER_EQUAL:
+	case scanner.GREATER_EQUAL:
 		checkNumberOperands()
 		return toNumber(left) >= toNumber(right)
-	case LESS:
+	case scanner.LESS:
 		checkNumberOperands()
 		return toNumber(left) < toNumber(right)
-	case LESS_EQUAL:
+	case scanner.LESS_EQUAL:
 		checkNumberOperands()
 		return toNumber(left) <= toNumber(right)
-	case EQUAL_EQUAL:
+	case scanner.EQUAL_EQUAL:
 		return left == right
-	case BANG_EQUAL:
+	case scanner.BANG_EQUAL:
 		return left != right
 	}
 
@@ -199,7 +202,7 @@ func (expr *ExprVariable) Eval(env *Env) Val {
 
 func (expr *ExprLogical) Eval(env *Env) Val {
 	val := expr.left.Eval(env)
-	if expr.operator.typ == OR {
+	if expr.operator.Type == scanner.OR {
 		if getTruthy(val) {
 			return val
 		}
@@ -246,7 +249,7 @@ func getTruthy(val Val) bool {
 }
 
 func isNumber(val Val) bool {
-	_, ok := val.(Number)
+	_, ok := val.(scanner.Number)
 	return ok
 }
 
@@ -255,10 +258,11 @@ func isString(val Val) bool {
 	return ok
 }
 
-func toNumber(val Val) Number {
-	if n, ok := val.(Number); ok {
+func toNumber(val Val) scanner.Number {
+	if n, ok := val.(scanner.Number); ok {
 		return n
 	}
+
 	// should never happen
 	panic("toNumber should always be called with a number")
 }

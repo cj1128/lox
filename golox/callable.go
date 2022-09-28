@@ -31,7 +31,7 @@ func (s *StmtFuncDecl) Arity() int {
 func (s *StmtFuncDecl) Call(_env *Env, arguments []Val) (result Val) {
 	newEnv := NewEnv(s.closure)
 	for i, arg := range arguments {
-		name := s.parameters[i].lexeme
+		name := s.parameters[i].Lexeme
 		newEnv.Define(name, arg)
 	}
 

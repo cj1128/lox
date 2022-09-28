@@ -1,5 +1,7 @@
 package main
 
+import "cjting.me/lox/scanner"
+
 type Stmt interface {
 	Run(env *Env)
 }
@@ -26,11 +28,11 @@ func NewStmtExpression(expr Expr) *StmtExpression {
 
 /*----------  Var Decl Stmt  ----------*/
 type StmtVarDecl struct {
-	name  *Token
+	name  *scanner.Token
 	value Expr
 }
 
-func NewStmtVarDecl(name *Token, value Expr) *StmtVarDecl {
+func NewStmtVarDecl(name *scanner.Token, value Expr) *StmtVarDecl {
 	return &StmtVarDecl{name, value}
 }
 
@@ -66,23 +68,23 @@ func NewStmtWhile(condition Expr, body Stmt) *StmtWhile {
 
 /*----------  Function Declaration Stmt  ----------*/
 type StmtFuncDecl struct {
-	name       *Token
-	parameters []*Token
+	name       *scanner.Token
+	parameters []*scanner.Token
 	body       []Stmt
 	// 运行时赋值
 	closure *Env
 }
 
-func NewStmtFuncDecl(name *Token, parameters []*Token, body []Stmt) *StmtFuncDecl {
+func NewStmtFuncDecl(name *scanner.Token, parameters []*scanner.Token, body []Stmt) *StmtFuncDecl {
 	return &StmtFuncDecl{name, parameters, body, nil}
 }
 
 /*----------  Return Stmt  ----------*/
 type StmtReturn struct {
-	token *Token
+	token *scanner.Token
 	value Expr
 }
 
-func NewStmtReturn(token *Token, value Expr) *StmtReturn {
+func NewStmtReturn(token *scanner.Token, value Expr) *StmtReturn {
 	return &StmtReturn{token, value}
 }

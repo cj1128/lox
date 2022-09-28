@@ -1,5 +1,7 @@
 package main
 
+import "cjting.me/lox/scanner"
+
 type Env struct {
 	prev *Env
 	m    map[string]Val
@@ -16,8 +18,8 @@ func (e *Env) Define(name string, val Val) {
 	e.m[name] = val
 }
 
-func (e *Env) Get(name *Token) Val {
-	key := name.lexeme
+func (e *Env) Get(name *scanner.Token) Val {
+	key := name.Lexeme
 	if e.has(key) {
 		return e.m[key]
 	}
@@ -29,8 +31,8 @@ func (e *Env) Get(name *Token) Val {
 	panic(NewRuntimeError(name, sprintf("undefined variable '%s'", key)))
 }
 
-func (e Env) Set(name *Token, val Val) {
-	key := name.lexeme
+func (e Env) Set(name *scanner.Token, val Val) {
+	key := name.Lexeme
 
 	if e.has(key) {
 		e.m[key] = val

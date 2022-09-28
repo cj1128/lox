@@ -2,39 +2,41 @@ package main
 
 import (
 	"fmt"
+
+	"cjting.me/lox/scanner"
 )
 
 type Parser struct {
-	tokens  []*Token
+	tokens  []*scanner.Token
 	current int
 	length  int
 }
 
 type ParseError struct {
-	token *Token
+	token *scanner.Token
 	msg   string
 }
 
-func NewParseError(token *Token, msg string) *ParseError {
+func NewParseError(token *scanner.Token, msg string) *ParseError {
 	return &ParseError{token, msg}
 }
 
 func (pe *ParseError) Error() string {
 	token := pe.token
 	position := ""
-	if token.typ == EOF {
+	if token.Type == scanner.EOF {
 		position = "at end"
 	} else {
-		position = fmt.Sprintf(`at '%s'`, token.lexeme)
+		position = fmt.Sprintf(`at '%s'`, token.Lexeme)
 	}
-	return fmt.Sprintf("line %d, %s, %s", token.line, position, pe.msg)
+	return fmt.Sprintf("line %d, %s, %s", token.Line, position, pe.msg)
 }
 
 func NewParser() *Parser {
 	return &Parser{}
 }
 
-func (p *Parser) Parse(tokens []*Token) (result []Stmt, err error) {
+func (p *Parser) Parse(tokens []*scanner.Token) (result []Stmt, err error) {
 	p.reset(tokens)
 	defer func() {
 		if e := recover(); e != nil {
@@ -64,9 +66,9 @@ func (p *Parser) Declaration() (result Stmt) {
 	// }()
 
 	switch true {
-	case p.match(VAR):
+	case p.match(scanner.VAR):
 		result = p.VarDeclaration()
-	case p.match(FUNC):
+	case p.match(scanner.FUNC):
 		result = p.FuncDeclaration("function")
 	default:
 		result = p.Statement()
@@ -77,56 +79,56 @@ func (p *Parser) Declaration() (result Stmt) {
 
 // kind should be one of: `function`
 func (p *Parser) FuncDeclaration(kind string) Stmt {
-	name := p.consume(IDENTIFIER, "expect "+kind+" name")
-	p.consume(LEFT_PAREN, "expect '(' after "+kind+" name")
-	var parameters []*Token
-	if !p.check(RIGHT_PAREN) {
-		parameters = append(parameters, p.consume(IDENTIFIER, "expect parameter name"))
-		for p.match(COMMA) {
+	name := p.consume(scanner.IDENTIFIER, "expect "+kind+" name")
+	p.consume(scanner.LEFT_PAREN, "expect '(' after "+kind+" name")
+	var parameters []*scanner.Token
+	if !p.check(scanner.RIGHT_PAREN) {
+		parameters = append(parameters, p.consume(scanner.IDENTIFIER, "expect parameter name"))
+		for p.match(scanner.COMMA) {
 			if len(parameters) == 8 {
 				panic(NewParseError(p.peek(), "can't have more than 8 arguments"))
 			}
-			parameters = append(parameters, p.consume(IDENTIFIER, "expect parameter name"))
+			parameters = append(parameters, p.consume(scanner.IDENTIFIER, "expect parameter name"))
 		}
 	}
-	p.consume(RIGHT_PAREN, "expect ')' after parameters")
-	p.consume(LEFT_BRACE, "expect '{' after "+kind+" body")
+	p.consume(scanner.RIGHT_PAREN, "expect ')' after parameters")
+	p.consume(scanner.LEFT_BRACE, "expect '{' after "+kind+" body")
 	body := p.BlockStatement()
 	return NewStmtFuncDecl(name, parameters, body)
 }
 
 func (p *Parser) VarDeclaration() Stmt {
-	name := p.consume(IDENTIFIER, "expect variable name")
+	name := p.consume(scanner.IDENTIFIER, "expect variable name")
 	var value Expr
-	if p.match(EQUAL) {
+	if p.match(scanner.EQUAL) {
 		value = p.Expression()
 	}
-	p.consume(SEMICOLON, "expect ';' after variable declaration")
+	p.consume(scanner.SEMICOLON, "expect ';' after variable declaration")
 	return NewStmtVarDecl(name, value)
 }
 
 func (p *Parser) Statement() Stmt {
-	if p.match(PRINT) {
+	if p.match(scanner.PRINT) {
 		return p.PrintStatement()
 	}
 
-	if p.match(LEFT_BRACE) {
+	if p.match(scanner.LEFT_BRACE) {
 		return NewStmtBlock(p.BlockStatement())
 	}
 
-	if p.match(IF) {
+	if p.match(scanner.IF) {
 		return p.IfStatement()
 	}
 
-	if p.match(WHILE) {
+	if p.match(scanner.WHILE) {
 		return p.WhileStatement()
 	}
 
-	if p.match(FOR) {
+	if p.match(scanner.FOR) {
 		return p.ForStatement()
 	}
 
-	if p.match(RETURN) {
+	if p.match(scanner.RETURN) {
 		return p.ReturnStatement()
 
 	}
@@ -137,20 +139,20 @@ func (p *Parser) Statement() Stmt {
 func (p *Parser) ReturnStatement() Stmt {
 	token := p.previous()
 	var value Expr
-	if !p.check(SEMICOLON) {
+	if !p.check(scanner.SEMICOLON) {
 		value = p.Expression()
 	}
-	p.consume(SEMICOLON, "expect ';' after return value")
+	p.consume(scanner.SEMICOLON, "expect ';' after return value")
 	return NewStmtReturn(token, value)
 }
 
 // desugar for to while statement
 func (p *Parser) ForStatement() Stmt {
-	p.consume(LEFT_PAREN, "expect '(' after for")
+	p.consume(scanner.LEFT_PAREN, "expect '(' after for")
 	var initializer Stmt
 
-	if !p.check(SEMICOLON) {
-		if p.match(VAR) {
+	if !p.check(scanner.SEMICOLON) {
+		if p.match(scanner.VAR) {
 			initializer = p.VarDeclaration()
 		} else {
 			initializer = p.ExpressionStatement()
@@ -158,16 +160,16 @@ func (p *Parser) ForStatement() Stmt {
 	}
 
 	var condition Expr
-	if !p.check(SEMICOLON) {
+	if !p.check(scanner.SEMICOLON) {
 		condition = p.Expression()
 	}
-	p.consume(SEMICOLON, "expect ';' after loop condition")
+	p.consume(scanner.SEMICOLON, "expect ';' after loop condition")
 
 	var increment Expr
-	if !p.check(RIGHT_PAREN) {
+	if !p.check(scanner.RIGHT_PAREN) {
 		increment = p.Expression()
 	}
-	p.consume(RIGHT_PAREN, "expect ')' after clauses")
+	p.consume(scanner.RIGHT_PAREN, "expect ')' after clauses")
 
 	body := p.Statement()
 
@@ -194,21 +196,21 @@ func (p *Parser) ForStatement() Stmt {
 }
 
 func (p *Parser) WhileStatement() Stmt {
-	p.consume(LEFT_PAREN, "expect '(' after while")
+	p.consume(scanner.LEFT_PAREN, "expect '(' after while")
 	condition := p.Expression()
-	p.consume(RIGHT_PAREN, "expect ')' after condition")
+	p.consume(scanner.RIGHT_PAREN, "expect ')' after condition")
 	body := p.Statement()
 	return NewStmtWhile(condition, body)
 }
 
 func (p *Parser) IfStatement() Stmt {
-	p.consume(LEFT_PAREN, "expect '(' after if")
+	p.consume(scanner.LEFT_PAREN, "expect '(' after if")
 	condition := p.Expression()
-	p.consume(RIGHT_PAREN, "expect ')' after if condition")
+	p.consume(scanner.RIGHT_PAREN, "expect ')' after if condition")
 	trueBranch := p.Statement()
 	var falseBranch Stmt
 
-	if p.match(ELSE) {
+	if p.match(scanner.ELSE) {
 		falseBranch = p.Statement()
 	}
 	return NewStmtIf(condition, trueBranch, falseBranch)
@@ -216,22 +218,22 @@ func (p *Parser) IfStatement() Stmt {
 
 func (p *Parser) BlockStatement() []Stmt {
 	var stmts []Stmt
-	for !p.check(RIGHT_BRACE) && !p.isAtEnd() {
+	for !p.check(scanner.RIGHT_BRACE) && !p.isAtEnd() {
 		stmts = append(stmts, p.Declaration())
 	}
-	p.consume(RIGHT_BRACE, "expect '}' after block")
+	p.consume(scanner.RIGHT_BRACE, "expect '}' after block")
 	return stmts
 }
 
 func (p *Parser) PrintStatement() Stmt {
 	expr := p.Expression()
-	p.consume(SEMICOLON, "expect ';' after value")
+	p.consume(scanner.SEMICOLON, "expect ';' after value")
 	return NewStmtPrint(expr)
 }
 
 func (p *Parser) ExpressionStatement() Stmt {
 	expr := p.Expression()
-	p.consume(SEMICOLON, "expect ';' after value")
+	p.consume(scanner.SEMICOLON, "expect ';' after value")
 	return NewStmtExpression(expr)
 }
 
@@ -242,7 +244,7 @@ func (p *Parser) Expression() Expr {
 func (p *Parser) Assignment() Expr {
 	expr := p.LogicalOr()
 
-	if p.match(EQUAL) {
+	if p.match(scanner.EQUAL) {
 		equal := p.previous()
 		value := p.Assignment()
 
@@ -259,7 +261,7 @@ func (p *Parser) Assignment() Expr {
 func (p *Parser) LogicalOr() Expr {
 	expr := p.LogicalAnd()
 
-	for p.match(OR) {
+	for p.match(scanner.OR) {
 		operator := p.previous()
 		right := p.LogicalAnd()
 		expr = NewExprLogical(expr, operator, right)
@@ -271,7 +273,7 @@ func (p *Parser) LogicalOr() Expr {
 func (p *Parser) LogicalAnd() Expr {
 	expr := p.Equality()
 
-	for p.match(AND) {
+	for p.match(scanner.AND) {
 		operator := p.previous()
 		right := p.Equality()
 		expr = NewExprLogical(expr, operator, right)
@@ -283,7 +285,7 @@ func (p *Parser) LogicalAnd() Expr {
 func (p *Parser) Equality() Expr {
 	expr := p.Comparison()
 
-	for p.match(BANG_EQUAL, EQUAL_EQUAL) {
+	for p.match(scanner.BANG_EQUAL, scanner.EQUAL_EQUAL) {
 		operator := p.previous()
 		right := p.Comparison()
 		expr = NewExprBinary(expr, operator, right)
@@ -295,7 +297,7 @@ func (p *Parser) Equality() Expr {
 func (p *Parser) Comparison() Expr {
 	expr := p.Addition()
 
-	for p.match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL) {
+	for p.match(scanner.GREATER, scanner.GREATER_EQUAL, scanner.LESS, scanner.LESS_EQUAL) {
 		operator := p.previous()
 		right := p.Addition()
 		expr = NewExprBinary(expr, operator, right)
@@ -307,7 +309,7 @@ func (p *Parser) Comparison() Expr {
 func (p *Parser) Addition() Expr {
 	expr := p.Multiplication()
 
-	for p.match(PLUS, MINUS) {
+	for p.match(scanner.PLUS, scanner.MINUS) {
 		operator := p.previous()
 		right := p.Multiplication()
 		expr = NewExprBinary(expr, operator, right)
@@ -318,7 +320,7 @@ func (p *Parser) Addition() Expr {
 
 func (p *Parser) Multiplication() Expr {
 	expr := p.Unary()
-	for p.match(STAR, SLASH) {
+	for p.match(scanner.STAR, scanner.SLASH) {
 		operator := p.previous()
 		right := p.Unary()
 		expr = NewExprBinary(expr, operator, right)
@@ -328,7 +330,7 @@ func (p *Parser) Multiplication() Expr {
 }
 
 func (p *Parser) Unary() Expr {
-	if p.match(BANG, MINUS) {
+	if p.match(scanner.BANG, scanner.MINUS) {
 		operator := p.previous()
 		operand := p.Unary()
 		return NewExprUnary(operator, operand)
@@ -340,7 +342,7 @@ func (p *Parser) Unary() Expr {
 func (p *Parser) Call() Expr {
 	expr := p.Primary()
 	for true {
-		if p.match(LEFT_PAREN) {
+		if p.match(scanner.LEFT_PAREN) {
 			expr = p.finishCall(expr)
 		} else {
 			break
@@ -350,29 +352,29 @@ func (p *Parser) Call() Expr {
 }
 
 func (p *Parser) Primary() Expr {
-	if p.match(TRUE) {
+	if p.match(scanner.TRUE) {
 		return NewExprLiteral(true)
 	}
 
-	if p.match(FALSE) {
+	if p.match(scanner.FALSE) {
 		return NewExprLiteral(false)
 	}
 
-	if p.match(NIL) {
+	if p.match(scanner.NIL) {
 		return NewExprLiteral(nil)
 	}
 
-	if p.match(NUMBER, STRING) {
-		return NewExprLiteral(p.previous().literal)
+	if p.match(scanner.NUMBER, scanner.STRING) {
+		return NewExprLiteral(p.previous().Literal)
 	}
 
-	if p.match(LEFT_PAREN) {
+	if p.match(scanner.LEFT_PAREN) {
 		expr := p.Expression()
-		p.consume(RIGHT_PAREN, "expect ')' after expression")
+		p.consume(scanner.RIGHT_PAREN, "expect ')' after expression")
 		return NewExprGrouping(expr)
 	}
 
-	if p.match(IDENTIFIER) {
+	if p.match(scanner.IDENTIFIER) {
 		return NewExprVariable(p.previous())
 	}
 
@@ -380,39 +382,39 @@ func (p *Parser) Primary() Expr {
 }
 
 /*----------  Helper Mehtods  ----------*/
-func (p *Parser) reset(tokens []*Token) {
+func (p *Parser) reset(tokens []*scanner.Token) {
 	p.tokens = tokens
 	p.length = len(tokens)
 	p.current = 0
 }
 
 func (p *Parser) isAtEnd() bool {
-	return p.peek().typ == EOF
+	return p.peek().Type == scanner.EOF
 }
 
-func (p *Parser) peek() *Token {
+func (p *Parser) peek() *scanner.Token {
 	return p.tokens[p.current]
 }
 
-func (p *Parser) previous() *Token {
+func (p *Parser) previous() *scanner.Token {
 	return p.tokens[p.current-1]
 }
 
-func (p *Parser) check(typ TokenType) bool {
+func (p *Parser) check(typ scanner.TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
-	return p.peek().typ == typ
+	return p.peek().Type == typ
 }
 
-func (p *Parser) advance() *Token {
+func (p *Parser) advance() *scanner.Token {
 	if !p.isAtEnd() {
 		p.current++
 	}
 	return p.previous()
 }
 
-func (p *Parser) match(tokenTypes ...TokenType) bool {
+func (p *Parser) match(tokenTypes ...scanner.TokenType) bool {
 	for _, typ := range tokenTypes {
 		if p.check(typ) {
 			p.advance()
@@ -422,7 +424,7 @@ func (p *Parser) match(tokenTypes ...TokenType) bool {
 	return false
 }
 
-func (p *Parser) consume(typ TokenType, msg string) *Token {
+func (p *Parser) consume(typ scanner.TokenType, msg string) *scanner.Token {
 	if p.check(typ) {
 		return p.advance()
 	}
@@ -431,9 +433,9 @@ func (p *Parser) consume(typ TokenType, msg string) *Token {
 
 func (p *Parser) finishCall(callee Expr) Expr {
 	var arguments []Expr
-	if !p.check(RIGHT_PAREN) {
+	if !p.check(scanner.RIGHT_PAREN) {
 		arguments = append(arguments, p.Expression())
-		for p.match(COMMA) {
+		for p.match(scanner.COMMA) {
 			// in order to compitable with C implementation, we limit
 			// argument size
 			if len(arguments) >= 8 {
@@ -443,7 +445,7 @@ func (p *Parser) finishCall(callee Expr) Expr {
 		}
 	}
 
-	paren := p.consume(RIGHT_PAREN, "exepct ')' after function arguments")
+	paren := p.consume(scanner.RIGHT_PAREN, "exepct ')' after function arguments")
 	return NewExprCall(callee, paren, arguments)
 }
 

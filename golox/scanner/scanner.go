@@ -1,34 +1,36 @@
-package main
+package scanner
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/pkg/errors"
 )
 
-type Scanner struct {
+type scanner struct {
 	source []rune
 	start  int
 	next   int
 	line   int
 }
 
-func NewScanner() *Scanner {
-	return &Scanner{
-		line: 1,
-	}
+func Scan(source string) ([]*Token, error) {
+	scanner := scanner{}
+	return scanner.scan(source)
 }
 
-func (s *Scanner) Scan(source string) ([]*Token, error) {
+func (s *scanner) scan(source string) ([]*Token, error) {
 	s.reset(source)
 	var tokens []*Token
+
 	for !s.isAtEnd() {
 		s.start = s.next
 		token, err := s.scanToken()
+
 		if err != nil {
 			return nil, fmt.Errorf("line %d, %v", s.line, err)
 		}
+
+		// nil means no meaningful token, like all space
 		if token != nil {
 			tokens = append(tokens, token)
 		}
@@ -36,48 +38,48 @@ func (s *Scanner) Scan(source string) ([]*Token, error) {
 
 	tokens = append(
 		tokens,
-		// can't use `s.newToken`, it would use last character as lexeme
 		NewToken(EOF, "", nil, s.line),
 	)
 
 	return tokens, nil
 }
 
-/*----------  Private Methods  ----------*/
-func (s *Scanner) reset(source string) {
+func (s *scanner) reset(source string) {
 	s.source = []rune(source)
 	s.start = 0
 	s.next = 0
 	s.line = 1
 }
 
-func (s *Scanner) isAtEnd() bool {
+func (s *scanner) isAtEnd() bool {
 	return s.next == len(s.source)
 }
 
-func (s *Scanner) advance() rune {
+func (s *scanner) advance() rune {
 	s.next++
 	return s.source[s.next-1]
 }
 
-func (s *Scanner) currentStr() string {
+func (s *scanner) currentStr() string {
 	return string(s.source[s.start:s.next])
 }
 
-func (s *Scanner) peek() rune {
+func (s *scanner) peek() rune {
 	return s.peekN(1)
 }
 
 // return 0x00 if index out of bound
-func (s *Scanner) peekN(n int) rune {
+func (s *scanner) peekN(n int) rune {
 	i := s.next + n - 1
+
 	if i >= len(s.source) {
-		return '\x00'
+		return 0
 	}
+
 	return s.source[i]
 }
 
-func (s *Scanner) newToken(typ TokenType, literal interface{}) *Token {
+func (s *scanner) newToken(typ TokenType, literal interface{}) *Token {
 	return NewToken(
 		typ,
 		s.currentStr(),
@@ -86,7 +88,7 @@ func (s *Scanner) newToken(typ TokenType, literal interface{}) *Token {
 	)
 }
 
-func (s *Scanner) scanString() (*Token, error) {
+func (s *scanner) scanString() (*Token, error) {
 	for s.peek() != '"' && !s.isAtEnd() {
 		if s.peek() == '\n' {
 			s.line++
@@ -101,10 +103,10 @@ func (s *Scanner) scanString() (*Token, error) {
 	// swallow the closing "
 	s.advance()
 
-	return s.newToken(STRING, string(s.source[s.start+1:s.next-1])), nil
+	return s.newToken(STRING, parseStringLiteral(string(s.source[s.start+1:s.next-1]))), nil
 }
 
-func (s *Scanner) scanNumber() (*Token, error) {
+func (s *scanner) scanNumber() (*Token, error) {
 	for isDigit(s.peek()) {
 		s.advance()
 	}
@@ -116,21 +118,21 @@ func (s *Scanner) scanNumber() (*Token, error) {
 		}
 	}
 
-	n, e := strconv.ParseFloat(s.currentStr(), 64)
+	n, e := parseNumberLiteral((s.currentStr()))
 
 	if e != nil {
-		return nil, errors.Wrap(e, "can't parse number")
+		return nil, errors.Wrap(e, "invalild number literal")
 	}
 
-	return s.newToken(NUMBER, Number(n)), nil
+	return s.newToken(NUMBER, n), nil
 }
 
-func (s *Scanner) scanIdentifier() *Token {
+func (s *scanner) scanIdentifier() *Token {
 	for isAlphaNumeric(s.peek()) {
 		s.advance()
 	}
 	identifier := s.currentStr()
-	typ := KeywordToken[identifier]
+	typ := keyworkdTokens[identifier]
 	if typ == "" {
 		return s.newToken(IDENTIFIER, nil)
 	} else {
@@ -139,7 +141,7 @@ func (s *Scanner) scanIdentifier() *Token {
 }
 
 // support nested block comment
-func (s *Scanner) scanBlockComment() {
+func (s *scanner) scanBlockComment() {
 	for !s.isAtEnd() {
 		// nested block comment
 		if s.peek() == '/' && s.peekN(2) == '*' {
@@ -155,11 +157,21 @@ func (s *Scanner) scanBlockComment() {
 			break
 		}
 
+		if s.peek() == '\n' {
+			s.line++
+		}
+
 		s.advance()
 	}
 }
 
-func (s *Scanner) scanToken() (*Token, error) {
+func (s *scanner) skipSpaces() {
+	if !s.isAtEnd() && isSpace(s.peek()) {
+		s.advance()
+	}
+}
+
+func (s *scanner) scanToken() (*Token, error) {
 	var token *Token
 
 	c := s.advance()
@@ -185,6 +197,7 @@ func (s *Scanner) scanToken() (*Token, error) {
 		token = s.newToken(STAR, nil)
 	case '.':
 		token = s.newToken(DOT, nil)
+
 	case '!':
 		if s.peek() == '=' {
 			s.advance()
@@ -226,21 +239,47 @@ func (s *Scanner) scanToken() (*Token, error) {
 		} else {
 			token = s.newToken(SLASH, nil)
 		}
+
 	case ' ':
+		fallthrough
 	case '\r':
+		fallthrough
 	case '\t':
+		s.skipSpaces()
+
 	case '\n':
 		s.line++
+
 	case '"':
 		return s.scanString()
+
 	default:
 		if isDigit(c) {
 			return s.scanNumber()
 		} else if isAlpha(c) {
 			token = s.scanIdentifier()
 		} else {
-			return nil, fmt.Errorf("unexpected character: %c", c)
+			return nil, fmt.Errorf("unexpected token: %c", c)
 		}
 	}
+
 	return token, nil
+}
+
+func isDigit(r rune) bool {
+	return r >= '0' && r <= '9'
+}
+
+func isAlpha(c rune) bool {
+	return (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		c == '_'
+}
+
+func isAlphaNumeric(c rune) bool {
+	return isAlpha(c) || isDigit(c)
+}
+
+func isSpace(c rune) bool {
+	return c == ' ' || c == '\t' || c == '\r'
 }

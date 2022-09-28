@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+
+	"cjting.me/lox/scanner"
 )
 
 type Expr interface {
@@ -11,15 +13,15 @@ type Expr interface {
 
 /*----------  Variable  ----------*/
 type ExprVariable struct {
-	name *Token
+	name *scanner.Token
 }
 
-func NewExprVariable(name *Token) *ExprVariable {
+func NewExprVariable(name *scanner.Token) *ExprVariable {
 	return &ExprVariable{name}
 }
 
 func (expr *ExprVariable) Print() string {
-	return expr.name.lexeme
+	return expr.name.Lexeme
 }
 
 /*----------  Literal  ----------*/
@@ -39,32 +41,32 @@ func (expr *ExprLiteral) Print() string {
 /*----------  Unary  ----------*/
 
 type ExprUnary struct {
-	operator *Token
+	operator *scanner.Token
 	operand  Expr
 }
 
-func NewExprUnary(operator *Token, operand Expr) *ExprUnary {
+func NewExprUnary(operator *scanner.Token, operand Expr) *ExprUnary {
 	return &ExprUnary{operator, operand}
 }
 
 func (expr *ExprUnary) Print() string {
-	return parenthesize(expr.operator.lexeme, expr.operand)
+	return parenthesize(expr.operator.Lexeme, expr.operand)
 }
 
 /*----------  Binary  ----------*/
 
 type ExprBinary struct {
 	left     Expr
-	operator *Token
+	operator *scanner.Token
 	right    Expr
 }
 
-func NewExprBinary(left Expr, operator *Token, right Expr) *ExprBinary {
+func NewExprBinary(left Expr, operator *scanner.Token, right Expr) *ExprBinary {
 	return &ExprBinary{left, operator, right}
 }
 
 func (expr *ExprBinary) Print() string {
-	return parenthesize(expr.operator.lexeme, expr.left, expr.right)
+	return parenthesize(expr.operator.Lexeme, expr.left, expr.right)
 }
 
 /*----------  Grouping  ----------*/
@@ -83,42 +85,42 @@ func (expr *ExprGrouping) Print() string {
 
 /*----------  Assignment  ----------*/
 type ExprAssignment struct {
-	name *Token
+	name *scanner.Token
 	val  Expr
 }
 
-func NewExprAssignment(name *Token, val Expr) *ExprAssignment {
+func NewExprAssignment(name *scanner.Token, val Expr) *ExprAssignment {
 	return &ExprAssignment{name, val}
 }
 
 func (expr *ExprAssignment) Print() string {
-	return sprintf("(assign %s %v)", expr.name.lexeme, expr.val)
+	return sprintf("(assign %s %v)", expr.name.Lexeme, expr.val)
 }
 
 /*----------  Logical  ----------*/
 type ExprLogical struct {
 	left     Expr
-	operator *Token
+	operator *scanner.Token
 	right    Expr
 }
 
-func NewExprLogical(left Expr, operator *Token, right Expr) *ExprLogical {
+func NewExprLogical(left Expr, operator *scanner.Token, right Expr) *ExprLogical {
 	return &ExprLogical{left, operator, right}
 }
 
 func (expr *ExprLogical) Print() string {
-	return parenthesize(expr.operator.lexeme, expr.left, expr.right)
+	return parenthesize(expr.operator.Lexeme, expr.left, expr.right)
 }
 
 /*----------  Function Call  ----------*/
 type ExprCall struct {
 	callee Expr
 	// close paren
-	paren     *Token
+	paren     *scanner.Token
 	arguments []Expr
 }
 
-func NewExprCall(callee Expr, paren *Token, arguments []Expr) Expr {
+func NewExprCall(callee Expr, paren *scanner.Token, arguments []Expr) Expr {
 	return &ExprCall{callee, paren, arguments}
 }
 
@@ -127,6 +129,7 @@ func (expr *ExprCall) Print() string {
 }
 
 /*----------  Helper Methods  ----------*/
+
 func parenthesize(name string, exprs ...Expr) string {
 	buf := &bytes.Buffer{}
 	buf.WriteString("(")

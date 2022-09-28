@@ -3,21 +3,22 @@ package main
 import (
 	"testing"
 
+	"cjting.me/lox/scanner"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestExprPrint(t *testing.T) {
 	expr := NewExprBinary(
 		NewExprUnary(
-			NewToken(MINUS, "-", nil, 1),
+			scanner.NewToken(scanner.MINUS, "-", nil, 1),
 			NewExprLiteral(123),
 		),
-		NewToken(STAR, "*", nil, 1),
+		scanner.NewToken(scanner.STAR, "*", nil, 1),
 		NewExprGrouping(
 			NewExprLiteral(45.67),
 		),
 	)
 
 	expected := "(* (- 123) (group 45.67))"
-	assert.Equal(t, expected, expr.print())
+	assert.Equal(t, expected, expr.Print())
 }

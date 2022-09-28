@@ -5,27 +5,28 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"cjting.me/lox/scanner"
 )
 
 type Lox struct {
-	env     *Env
-	scanner *Scanner
-	parser  *Parser
+	env    *Env
+	parser *Parser
 }
 
 /*----------  Public API  ----------*/
 
 func NewLox() *Lox {
 	return &Lox{
-		env:     globalEnv,
-		scanner: NewScanner(),
-		parser:  NewParser(),
+		env:    globalEnv,
+		parser: NewParser(),
 	}
 }
 
 func (lox *Lox) Eval(source string) error {
 	// scan
-	tokens, err := lox.scanner.Scan(source)
+	tokens, err := scanner.Scan(source)
+
 	if err != nil {
 		return fmt.Errorf("scan error: %v", err)
 	}
@@ -75,7 +76,7 @@ func (lox *Lox) REPL() {
 /*----------  Private Methods  ----------*/
 // used by REPL, source should be a whole expression
 func (lox *Lox) evalExpression(source string) (val Val, err error) {
-	tokens, err := lox.scanner.Scan(source)
+	tokens, err := scanner.Scan(source)
 	if err != nil {
 		err = fmt.Errorf("scan error: %v", err)
 		return

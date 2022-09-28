@@ -1,4 +1,4 @@
-package main
+package scanner
 
 import "fmt"
 
@@ -55,17 +55,17 @@ const (
 )
 
 type Token struct {
-	typ     TokenType
-	lexeme  string
-	literal interface{} // string or number
-	line    int
+	Type    TokenType
+	Lexeme  string
+	Literal interface{} // string or Number
+	Line    int
 }
 
 func (t *Token) String() string {
-	return fmt.Sprintf("[%d] %s: %s (%#v)", t.line, t.typ, t.lexeme, t.literal)
+	return fmt.Sprintf("[%d] %s: %s (%#v)", t.Line, t.Type, t.Lexeme, t.Literal)
 }
 
-var KeywordToken = map[string]TokenType{
+var keyworkdTokens = map[string]TokenType{
 	"and":    AND,
 	"class":  CLASS,
 	"else":   ELSE,
@@ -91,9 +91,9 @@ func NewToken(
 	line int,
 ) *Token {
 	return &Token{
-		typ:     typ,
-		lexeme:  lexeme,
-		literal: literal,
-		line:    line,
+		Type:    typ,
+		Lexeme:  lexeme,
+		Literal: literal,
+		Line:    line,
 	}
 }
