@@ -1,6 +1,6 @@
 <h1 align="center">
   <a href="http://www.craftinginterpreters.com/">
-    Crafting Interpreters 
+    Crafting Interpreters
   </a>
 </h1>
 
@@ -8,65 +8,43 @@
   <a href="./spec.md">Lox Spec</a>
 </p>
 
-## Setup
+## Odinlox Setup
 
-```bash
-git clone https://github.com/fate-lovely/lox
-mkdir -p $GOPATH/src/github.com/fate-lovely
-cd lox/golox
-ln -s $(pwd) $GOPATH/src/github.com/fate-lovely/golox
-cd $GOPATH/src/github.com/fate-lovely/golox
-make // install golox binary
-golox
-```
+TODO
 
-## Modifications
+## Chapter 2 A Map of the Territory
 
-some modifications to lox.
+- The Parts of a Language
+  - Lexing (Scanning), lexical analysis
+  - Parsing
+  - Static Analysis
+  - Generate intermediate representation
+  - Optimization
+  - Code Generation
+- IR Intermediate Representations
+  - Control Flow Graph(CFG)
+  - Static Single-Assignment(SSA)
+  - Continuation-Passing Style(CPS)
+  - Three Address Code(TAC)
+- Optimization keywords
+  - Constant Propagation
+  - Common Subexpression Elimination
+  - Loop Invariant Code Motion
+  - Global Value Numbering
+  - Strength Reduction
+  - Scalar Replacement of Aggregates
+  - Dead Code Elimination
+  - Loop Unrolling
+- Single-Pass Compilers
+  - 某些编译器混合了 `Parsing`, `Analysis` 等步骤，在 Parsing 阶段就直接生成代码，这意味着编译器看到每一个表达式，都需要知道足够的信息去编译它。这对语言有很大的限制，语言用到的每一个东西都需要提前声明（C 和 Pascal 就满足这样的限制）。
+  - `Syntax-Directed Translation` 是一种帮助生成 Single-Pass Compilers 的技术。
+- Tree-Walk Interpreters
+  - Tree-walk interpreters 指的是生成 AST 以后通过遍历 AST 来执行代码。这个技术通常用于小的实验项目中，通用编程语言很少用因为比较慢（Ruby 是一个例外，1.9 之前的 Ruby 使用的就是这个技术）。
+- Transpilers: a source-to-source compiler
 
-- make function keyword be `func` rather than `fun`
-- handle nested block-comment(`/* /* ... */ */`)
+## Charpter 3: The Lox Language
 
-## Notes
-
-### A Map of the Territory
-
-- Lexing (Scanning)
-- Parsing
-- Static Analysis
-- Generate intermediate representation
-- Optimization
-- Code Generation
-
-### Intermediate Representations
-
-- Control Flow Graph(CFG)
-- Static Single-Assignment(SSA)
-- Continuation-Passing Style(CPS)
-- Three Address Code(TAC)
-
-### Optimization
-
-- Constant Propagation
-- Common Subexpression Elimination
-- Loop Invariant Code Motion
-- Global Value Numbering
-- Strength Reduction
-- Scalar Replacement of Aggregates
-- Dead Code Elimination
-- Loop Unrolling
-
-### Single-Pass Compilers
-
-某些编译器混合了`Parsing`,`Analysis`等步骤，在Parsing阶段就直接生成代码，这意味着编译器看到每一个表达式，都需要知道足够的信息去编译它。这对语言有很大的限制，语言用到的每一个东西都需要提前声明（C和Pascal就满足这样的限制）。
-
-`Syntax-Directed Translation`是一种帮助生成Single-Pass Compilers的技术。
-
-### Tree-Walk Interpreters
-
-Tree-walk interpreters指的是生成AST以后通过遍历AST来执行代码。这个技术通常用于小的实验项目中，通用编程语言很少用因为比较慢（Ruby是一个例外，1.9之前的ruby使用的就是这个技术）。
-
-## Reviews
+[Lox Spec](./spec.md)
 
 ### Charpter 4: Scanning
 
@@ -78,7 +56,7 @@ Tree-walk interpreters指的是生成AST以后通过遍历AST来执行代码。�
 - basic grammer:
 
   ```text
-  expression -> literal 
+  expression -> literal
               | unary
               | binary
               | grouping
@@ -165,7 +143,7 @@ Tree-walk interpreters指的是生成AST以后通过遍历AST来执行代码。�
 
   ```plain
   statement -> exprStmt | printStmt | block | ifStmt
-  ifStmt -> "if" "(" expression ")" statement ("else" statement)? 
+  ifStmt -> "if" "(" expression ")" statement ("else" statement)?
   ```
 
 - 增加逻辑操作符语法

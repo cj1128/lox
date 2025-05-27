@@ -1,11 +1,64 @@
 # Lox Spec
 
-[Reference](http://www.craftinginterpreters.com/the-lox-language.html)
+- [The Lox Language in www.craftinginterpreters.com](http://www.craftinginterpreters.com/the-lox-language.html)
 
-## Lexical Rules
+## Overall
 
-- Identifier: `[a-zA-Z_][a-zA-Z_0-9]*`
-- Number: `[0-9]+(\.[0-9]+)?`
+- dyanmic typing
+- has **statements** and **expressions**, an expression’s main job is to produce a value, a statement’s job is to produce an effect.
+- assignment is an expression rather than a statement
+- global variables can be redifined
+- automatic Memory Management
+
+## Data Types
+
+- boolean: `true` and `false`
+- number: only IEEE754 double float
+- string: multi line string is allowed
+- nil
+
+## Expressions & Statements
+
+- Expressions
+  - Arithemetic
+  - Comparision and Equality
+  - Logical operators: `and`, `or`, `!`
+- Statements
+  - Statements don’t evaluate to a value, to be useful they have to otherwise change the world in some way
+  - An expression followed by a semicolon (;) promotes the expression to statement-hood. This is called (imaginatively enough), an **expression statement**.
+  - We can pack multiple statements in a **block**.
+
+## Variables & Control Flow
+
+- use `var` to define a variable, default value is `nil`
+- control flow
+  - `if`
+  - `while`
+  - `for`
+
+### Functions && Closures
+
+- functions
+  - define function with `fun`
+  - call function using `function()`
+  - the body of a function is always a block, if no `return` found, `nil` is implicitly returned
+  - to be compatible with C, function params must <= 8
+- Closures
+  - functons are first class
+
+### Classes
+
+- Just like functions, classes are first class in Lox
+- class itself is a factory function for instances. Call a class like a function, and it produces a new instance of itself
+- Assigning to a field creates it if it doesn’t already exist in the object
+- special class method `init` to the initialization
+- single inheritance use `<`
+- use `super` to call methods in parent class
+
+## Standard Library
+
+- built-in `print` statement
+- built-in function `clock`
 
 ## Operators
 
@@ -19,7 +72,12 @@
 |   Logical Or   |         `or`         |     Left      |
 |    Equality    |      `==`, `!=`      |     Left      |
 
+
 ## Grammer
+
+- Lexical Rules
+  - Identifier: `[a-zA-Z_][a-zA-Z_0-9]*`
+  - Number: `[0-9]+(\.[0-9]+)?`
 
 ```text
 program -> declaration* EOF
@@ -48,53 +106,3 @@ call -> primary ( "(" arguments? ")" )*
 arguments -> expression ( "," expression )*
 primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER
 ```
-
-## Features
-
-- dyanmic typing
-- has statements and expressions
-- assignment is an expression rather than a statement
-- global variables can be redifined
-- automatic Memory Management
-
-### Data Types
-
-- Boolean: `true` and `false`
-- Number: 数字只支持双精度浮点数
-- String: 字符串可以跨行
-- Nil
-
-### Expressions
-
-- Arithemetic
-- Comparision and Equality
-- Logical operators: `and`, `or`, `!`
-
-### Variables
-
-- 使用`var`定义变量，如果没有初始值，默认值为`nil`
-
-### Control Flow
-
-- `if`
-- `while`
-- `for`
-
-### Functions
-
-- 必须使用括号
-- 函数如果没有显示`return`，那么则隐式返回`nil`
-- 为了和C实现兼容，函数参数个数最多为8个
-
-### Closures
-
-- 函数是一等对象
-
-### Classes
-
-- 使用`className()`初始化实例
-- 对象属性是动态添加的，对对象进行赋值即可添加属性
-- 在方法内部，使用`this`访问对象
-- 类的`init`方法负责执行初始化
-- 使用`<`实现继承
-- 使用`super`调用父类方法
