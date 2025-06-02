@@ -4,13 +4,15 @@
   </a>
 </h1>
 
-<p align="center">
-  <a href="./spec.md">Lox Spec</a>
-</p>
+- [Lox Implementations](https://github.com/munificent/craftinginterpreters/wiki/Lox-implementations)
+- [Lox Spec](./spec.md)
 
-## Odinlox Setup
+## Chapter 1 Introduction
 
-TODO
+- Compiler-compiler
+  - `Yacc` is a tool that takes in a grammar file and produces a source file for a compiler, so it’s sort of like a "compiler-compiler".
+  - A later similar tool is `Bison`, named as a pun on the pronunciation of Yacc like "yak".
+- A compiler reads files in one language, translates them, and outputs files in another language. You can implement a compiler in any language, including the same language it compiles, a process called **self-hosting**.
 
 ## Chapter 2 A Map of the Territory
 
@@ -22,10 +24,10 @@ TODO
   - Optimization
   - Code Generation
 - IR Intermediate Representations
-  - Control Flow Graph(CFG)
-  - Static Single-Assignment(SSA)
-  - Continuation-Passing Style(CPS)
-  - Three Address Code(TAC)
+  - Control Flow Graph (CFG)
+  - Static Single-Assignment (SSA)
+  - Continuation-Passing Style (CPS)
+  - Three Address Code (TAC)
 - Optimization keywords
   - Constant Propagation
   - Common Subexpression Elimination
@@ -42,16 +44,19 @@ TODO
   - Tree-walk interpreters 指的是生成 AST 以后通过遍历 AST 来执行代码。这个技术通常用于小的实验项目中，通用编程语言很少用因为比较慢（Ruby 是一个例外，1.9 之前的 Ruby 使用的就是这个技术）。
 - Transpilers: a source-to-source compiler
 
-## Charpter 3: The Lox Language
+## Chapter 3: The Lox Language
 
 [Lox Spec](./spec.md)
 
-### Charpter 4: Scanning
+## Chapter 4: Scanning
 
-- scanning阶段扫描出的每一个符号叫做：`lexeme`
-- `maximal munch`原则：当两个词法规则都能匹配token的时候，匹配到最多字符的规则胜出。
+- `lexeme` is a raw substrings of the source code, produced by the scanner
+- The rules that determine how a particular language groups characters into lexemes are called its **lexical grammar**.
+- In Lox, as in most programming languages, the rules of that grammar are simple enough for the language to be classified a **regular language**. That’s the same “regular” as in regular expressions.
+- Tools like Lex or Flex are designed expressly to let you do this—throw a handful of regexes at them, and they give you a complete scanner back
+- `maximal munch` principle: When two lexical grammar rules can both match a chunk of code that the scanner is looking at, whichever one **matches the most characters wins**.
 
-### Chartper 5: Representing Code
+## Chapter 5: Representing Code
 
 - basic grammer:
 
@@ -67,11 +72,11 @@ TODO
   operator -> "==" | "!=" | "<" | ">" | "<=" | ">=" | "+" | "-" | "*" | "/"
   ```
 
-### Chartper 6: Parsing Expressions
+## Chapter 6: Parsing Expressions
 
 - ambiguity
 
-  第五章的语法实际上是Ambiguous的，因为没有定义操作符的优先级(Precedence)和结合性(Associativity)。
+  第五章的语法实际上是 Ambiguous 的，因为没有定义操作符的优先级(Precedence)和结合性(Associativity)。
 
   下表定义了操作符的优先级，由高到低。
 
@@ -95,18 +100,18 @@ TODO
   primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")"
   ```
 
-### Chartper 7: Evaluating Expressions
+## Chapter 7: Evaluating Expressions
 
 - types
 
-  + `nil` -> `nil`
-  + `boolean` -> `bool`
-  + `number` -> `float64`
-  + `string` -> `string`
+  - `nil` -> `nil`
+  - `boolean` -> `bool`
+  - `number` -> `float64`
+  - `string` -> `string`
 
-### Chartper 8: Statements and State
+## Chapter 8: Statements and State
 
-- 增加Statement语法
+- 增加 Statement 语法
 
   ```plain
   program -> statement* EOF
@@ -137,9 +142,9 @@ TODO
   block -> "{" declaration* "}"
   ```
 
-### Chartper 9: Control Flow
+### Chapter 9: Control Flow
 
-- 增加If语法
+- 增加 If 语法
 
   ```plain
   statement -> exprStmt | printStmt | block | ifStmt
@@ -154,14 +159,14 @@ TODO
   logic_and -> equality ( "and" equality )*
   ```
 
-- 增加While语法
+- 增加 While 语法
 
   ```plain
   statement -> exprStmt | printStmt | block | ifStmt | whileStmt
   whileStmt -> "while" "(" expression ")" statement
   ```
 
-- 增加For语法
+- 增加 For 语法
 
   ```plain
   statement -> exprStmt | printStmt | block | ifStmt | whileStmt | forStmt
@@ -170,7 +175,7 @@ TODO
                         expression? ")" statement
   ```
 
-### Chartper 10: Functions
+### Chapter 10: Functions
 
 - 加入函数调用语法
 
