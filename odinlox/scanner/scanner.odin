@@ -18,6 +18,7 @@ Scanner :: struct {
 Error_Type :: enum u8 {
 	Unexpected_Char,
 	Unterminated_String,
+	Unterminated_Block_Comment,
 }
 
 Error :: struct {
@@ -45,6 +46,10 @@ add_error_unexpected_char :: proc(s: ^Scanner, char: rune) {
 
 add_error_unterminated_string :: proc(s: ^Scanner) {
 	append(&s.errors, Error{line = s.line, type = .Unterminated_String})
+}
+
+add_error_unterminated_block_comment :: proc(s: ^Scanner) {
+	append(&s.errors, Error{line = s.line, type = .Unterminated_Block_Comment})
 }
 
 add_token :: proc(s: ^Scanner, token_type: Token_Type) {
@@ -88,9 +93,9 @@ add_identifier_token :: proc(s: ^Scanner, lexeme: string) {
 	}
 }
 
-advance :: proc(s: ^Scanner) -> u8 {
+advance :: proc(s: ^Scanner, offset := 1) -> u8 {
 	result := s.source[s.current]
-	s.current += 1
+	s.current += offset
 	return result
 }
 
@@ -100,6 +105,10 @@ peek :: proc(s: ^Scanner, offset := 0) -> u8 {
 		return 0
 	}
 	return s.source[idx]
+}
+peek_str :: proc(s: ^Scanner, length: int) -> string {
+	end_index := min(s.current + length, len(s.source))
+	return s.source[s.current:end_index]
 }
 
 has_content :: proc(s: ^Scanner) -> bool {
@@ -148,9 +157,11 @@ scan :: proc(source: string, allocator := context.allocator) -> ([dynamic]Token,
 		case '/':
 			// comment
 			if match(s, '/') {
-				for peek(s) != '\n' {
+				for has_content(s) && peek(s) != '\n' {
 					advance(s)
 				}
+			} else if match(s, '*') {
+				block_comment(s)
 			} else {
 				add_token(s, .SLASH)
 			}
@@ -222,7 +233,7 @@ number_literal :: proc(s: ^Scanner) {
 }
 
 string_literal :: proc(s: ^Scanner) {
-	for peek(s) != '"' {
+	for has_content(s) && peek(s) != '"' {
 		if peek(s) == '\n' {
 			s.line += 1
 		}
@@ -238,4 +249,31 @@ string_literal :: proc(s: ^Scanner) {
 	advance(s)
 
 	add_string_token(s, s.source[s.start + 1:s.current - 1])
+}
+
+// supports nesting
+block_comment :: proc(s: ^Scanner) {
+	level := 1
+
+	for has_content(s) {
+		if peek_str(s, 2) == "/*" {
+			level += 1
+			advance(s, 2)
+		} else if peek_str(s, 2) == "*/" {
+			level -= 1
+			advance(s, 2)
+			if level == 0 {
+				return
+			}
+		} else {
+			if peek(s) == '\n' {
+				s.line += 1
+			}
+			advance(s)
+		}
+	}
+
+	if level != 0 {
+		add_error_unterminated_block_comment(s)
+	}
 }

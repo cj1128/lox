@@ -55,6 +55,34 @@
 - In Lox, as in most programming languages, the rules of that grammar are simple enough for the language to be classified a **regular language**. That’s the same “regular” as in regular expressions.
 - Tools like Lex or Flex are designed expressly to let you do this—throw a handful of regexes at them, and they give you a complete scanner back
 - `maximal munch` principle: When two lexical grammar rules can both match a chunk of code that the scanner is looking at, whichever one **matches the most characters wins**.
+- Challenges
+  - The lexical grammars of Python and Haskell are not regular. What does that mean, and why aren’t they?
+    - Their tokenization rules cannot be fully expressed by regular languages, which means cannot be implemented using just regular expressions or finite automata.
+    - Their syntax is indentation-based, need to **remember** current indentation level
+  - Aside from separating tokens—distinguishing print foo from printfoo—spaces aren’t used for much in most languages. However, in a couple of dark corners, a space does affect how code is parsed in CoffeeScript, Ruby, and the C preprocessor. Where and what effect does it have in each of those languages?
+    ```coffeescript
+    # coffeescript
+    console.log +1 # console.log(+1);
+    console.log+1 # console.log + 1;
+    ```
+    ```ruby
+    # ruby
+    def f():
+      100
+    end
+
+    f -1 # passes -1 as an argument to f
+    f-1 # calls f and then minus 1
+    ```
+    ```c
+    // C preprocessor
+    #define FOO(x) x+1
+    #define FOO (x) x+1
+    ```
+  - Our scanner here, like most, discards comments and whitespace since those aren’t needed by the parser. Why might you want to write a scanner that does not discard those? What would it be useful for?
+    - documentation generation
+  - Add support to Lox’s scanner for C-style /* ... */ block comments. Make sure to handle newlines in them. Consider allowing them to nest. Is adding support for nesting more work than you expected? Why?
+    - trivial to add support for nesting, just need a counter to store current nesting level
 
 ## Chapter 5: Representing Code
 

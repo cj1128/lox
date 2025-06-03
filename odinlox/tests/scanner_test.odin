@@ -66,3 +66,54 @@ basic_scanner :: proc(t: ^testing.T) {
 		)
 	}
 }
+
+@(test)
+scanner_error :: proc(t: ^testing.T) {
+	tokens, errors := scanner.scan(`"unterminated string`)
+	testing.expect(t, len(tokens) == 1) // EOF
+	testing.expect(t, tokens[0].type == .EOF)
+
+	testing.expect(t, len(errors) == 1)
+	testing.expect(t, errors[0].type == .Unterminated_String)
+}
+
+@(test)
+line_comment :: proc(t: ^testing.T) {
+	tokens, errors := scanner.scan(`
+    // this is a comment
+    +
+  `)
+	testing.expect(t, len(errors) == 0)
+	testing.expect(t, len(tokens) == 2)
+	testing.expect(t, tokens[0].type == .PLUS)
+	testing.expect(t, tokens[1].type == .EOF)
+}
+
+@(test)
+block_comment_ok :: proc(t: ^testing.T) {
+	tokens, errors := scanner.scan(
+		`
+    /*
+      /*
+          hello world
+      */
+    */
+    +
+  `,
+	)
+	testing.expect(t, len(errors) == 0)
+	testing.expect(t, len(tokens) == 2)
+	testing.expect(t, tokens[0].type == .PLUS)
+	testing.expect(t, tokens[1].type == .EOF)
+}
+@(test)
+block_comment_error :: proc(t: ^testing.T) {
+	tokens, errors := scanner.scan(`
+    /*
+      /*
+    */
+    +
+  `)
+	testing.expect(t, len(errors) == 1)
+	testing.expect(t, errors[0].type == .Unterminated_Block_Comment)
+}
