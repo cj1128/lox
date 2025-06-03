@@ -86,8 +86,10 @@
 
 ## Chapter 5: Representing Code
 
-- basic grammer:
-
+- Context-Free Grammars
+  - regular languages aren’t powerful enough to handle expressions which can nest arbitrarily deeply.
+- A Grammar for Lox expressions
+  - CAPITALIZE terminals are a single lexeme whose text representation may vary, e.g. NUMBER is any number literal
   ```text
   expression -> literal
               | unary
@@ -99,34 +101,44 @@
   binary -> expression operator expression
   operator -> "==" | "!=" | "<" | ">" | "<=" | ">=" | "+" | "-" | "*" | "/"
   ```
+- Challenges: SKIP
 
 ## Chapter 6: Parsing Expressions
 
-- ambiguity
-
-  第五章的语法实际上是 Ambiguous 的，因为没有定义操作符的优先级(Precedence)和结合性(Associativity)。
-
-  下表定义了操作符的优先级，由高到低。
-
+- The grammar defined in last chapter is actually **ambiguous**, because we don't define operator **Precedence** and **Associativity**
+  - Precedence determines which operator is evaluated first in an expression containing a mixture of different operators.
+  - Associativity determines which operator is evaluated first in a series of the same operator.
+- Associativity determines which operator is evaluated first in a series of the same operator.
+  ```js
+  console.log(0.1 * (0.2 * 0.3))
+  console.log((0.1 * 0.2) * 0.3)
+  ```
+- Lox has the same precedence rules as C, below table is going from lowest to highest.
   |      Name      |      Operators       | Associativity |
   | :------------: | :------------------: | :-----------: |
-  |     Unary      |       `!`, `+`       |     Right     |
-  | Multiplication |       `*`, `/`       |     Left      |
-  |    Addition    |       `+`, `-`       |     Left      |
-  |   Comparison   | `>`, `>=`, `<`, `<=` |     Left      |
   |    Equality    |      `==`, `!=`      |     Left      |
-
-  改进后的无歧义语法如下。
-
+  |   Comparison   | `>`, `>=`, `<`, `<=` |     Left      |
+  |      Term      |       `+`, `-`       |     Left      |
+  |     Factor     |       `*`, `/`       |     Left      |
+  |     Unary      |       `!`, `+`       |     Right     |
+- There are many grammars you can define that match the same language. The choice for how to model a particular language is partially a matter of taste and partially a pragmatic one.
+- Enahnced grammar without ambiguity
   ```text
   expression -> equality
   equality -> comparison ( ( "!=" | "==" ) comparison )*
-  comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )*
-  addition -> multiplication ( ( "-" | "+" ) multiplication )*
-  multiplication -> unary ( ( "*" | "/" ) unary)*
+  comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+  term -> factor ( ( "-" | "+" ) factor )*
+  factor -> unary ( ( "*" | "/" ) unary)*
   unary -> ( "!" | "-" ) unary | primary
   primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")"
   ```
+- Recursive Descent Parsing
+  - Recursive descent is the simplest way to build a parser, and doesn’t require using complex parser generator tools like Yacc, Bison or ANTLR.
+  - Don’t be fooled by its simplicity, though. Recursive descent parsers are **fast**, **robust**, and can **support sophisticated error handling**. In fact, GCC, V8 (the JavaScript VM in Chrome), Roslyn (the C# compiler written in C#) and many other heavyweight production language implementations use recursive descent. It rocks.
+  - A recursive descent parser is a literal translation of the grammar’s rules straight into imperative code. Each rule becomes a function.
+- A parser really has two jobs:
+  - Given a valid sequence of tokens, produce a corresponding syntax tree.
+  - Given an invalid sequence of tokens, detect any errors and tell the user about their mistakes.
 
 ## Chapter 7: Evaluating Expressions
 

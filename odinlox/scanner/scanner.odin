@@ -53,14 +53,18 @@ add_error_unterminated_block_comment :: proc(s: ^Scanner) {
 }
 
 add_token :: proc(s: ^Scanner, token_type: Token_Type) {
-	append(&s.tokens, Token{type = token_type})
+	append(&s.tokens, Token{type = token_type, lexeme = s.source[s.start:s.current]})
 }
 
 add_string_token :: proc(s: ^Scanner, literal: string) {
-	append(&s.tokens, Token{type = .STRING, literal = literal})
+	append(
+		&s.tokens,
+		Token{type = .STRING, literal = literal, lexeme = s.source[s.start:s.current]},
+	)
 }
 
-add_number_token :: proc(s: ^Scanner, lexeme: string) {
+add_number_token :: proc(s: ^Scanner) {
+	lexeme := s.source[s.start:s.current]
 	value, ok := strconv.parse_f64(lexeme)
 	assert(ok)
 	append(&s.tokens, Token{type = .NUMBER, lexeme = lexeme, literal = value})
@@ -190,6 +194,7 @@ scan :: proc(source: string, allocator := context.allocator) -> ([dynamic]Token,
 		}
 	}
 
+	s.start = s.current
 	add_token(s, .EOF)
 
 	return s.tokens, s.errors
@@ -229,7 +234,7 @@ number_literal :: proc(s: ^Scanner) {
 		}
 	}
 
-	add_number_token(s, s.source[s.start:s.current])
+	add_number_token(s)
 }
 
 string_literal :: proc(s: ^Scanner) {

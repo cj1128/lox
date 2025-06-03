@@ -1,5 +1,6 @@
 package lox
 
+import "./parser"
 import "./scanner"
 import "core:bufio"
 import "core:fmt"
@@ -59,15 +60,37 @@ run :: proc(code: string) {
 	defer delete(errors)
 
 	if len(errors) > 0 {
-		fmt.eprintln("failed to scan")
+		fmt.eprintln("failed to scan:")
 		for e in errors {
 			fmt.eprintf("error: %v\n", e)
 		}
-	} else {
-		fmt.println("tokens:")
+		return
+	}
+
+	// print tokens
+	{
+		fmt.println("#### tokens ####")
 		for t in tokens {
-			fmt.println(t)
+			fmt.println("--", t)
 		}
+	}
+
+	parsed := parser.parse(tokens[:])
+	// defer parser.destroy(parsed)
+	if len(parsed.errors) > 0 {
+		fmt.eprintln("failed to parse:")
+		for e in errors {
+			fmt.eprintf("error: %v\n", e)
+		}
+		return
+	}
+
+	// print AST
+	{
+		fmt.println("#### AST ####")
+		str := parser.pp(parsed.ast)
+		defer delete(str)
+		fmt.println(str)
 	}
 }
 
