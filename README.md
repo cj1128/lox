@@ -120,7 +120,7 @@
   |   Comparison   | `>`, `>=`, `<`, `<=` |     Left      |
   |      Term      |       `+`, `-`       |     Left      |
   |     Factor     |       `*`, `/`       |     Left      |
-  |     Unary      |       `!`, `+`       |     Right     |
+  |     Unary      |       `!`, `-`       |     Right     |
 - There are many grammars you can define that match the same language. The choice for how to model a particular language is partially a matter of taste and partially a pragmatic one.
 - Enahnced grammar without ambiguity
   ```text

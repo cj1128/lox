@@ -2,7 +2,7 @@ package parser
 
 import "../scanner"
 import "core:fmt"
-import vmem "core:mem/virtual"
+import "core:mem"
 
 Token :: scanner.Token
 Token_Type :: scanner.Token_Type
@@ -15,24 +15,22 @@ Parser :: struct {
 }
 
 Error :: struct {
+	msg: string,
 }
 
 ParseResult :: struct {
 	ast:    ^Expr,
 	errors: [dynamic]Error,
-	arena:  ^vmem.Arena,
+	arena:  mem.Dynamic_Arena,
 }
 
 parse :: proc(tokens: []Token, allocator := context.allocator) -> ^ParseResult {
-	arena: vmem.Arena
-	arena_err := vmem.arena_init_growing(&arena)
-	ensure(arena_err == nil)
-	arena_alloc := vmem.arena_allocator(&arena)
+	result := new(ParseResult)
+	mem.dynamic_arena_init(&result.arena)
+	arena_alloc := mem.dynamic_arena_allocator(&result.arena)
 
 	context.allocator = arena_alloc
 
-	result := new(ParseResult)
-	result.arena = &arena
 	result.errors = make([dynamic]Error)
 
 	p := &Parser{tokens = tokens, result = result}
@@ -42,7 +40,8 @@ parse :: proc(tokens: []Token, allocator := context.allocator) -> ^ParseResult {
 	return result
 }
 destroy :: proc(result: ^ParseResult) {
-	vmem.arena_destroy(result.arena)
+	mem.dynamic_arena_destroy(&result.arena)
+	free(result)
 }
 
 expression :: proc(p: ^Parser) -> ^Expr {
@@ -73,6 +72,7 @@ comparision :: proc(p: ^Parser) -> ^Expr {
 	return expr
 }
 
+// "+" "-"
 term :: proc(p: ^Parser) -> ^Expr {
 	expr := factor(p)
 
@@ -85,6 +85,7 @@ term :: proc(p: ^Parser) -> ^Expr {
 	return expr
 }
 
+// "*" "/"
 factor :: proc(p: ^Parser) -> ^Expr {
 	expr := unary(p)
 
@@ -123,12 +124,27 @@ primary :: proc(p: ^Parser) -> ^Expr {
 
 	case match(p, {.LEFT_PAREN}):
 		expr := expression(p)
-		// TODO: assert there is a rigth paren
-		return grouping_expr(expr)
+		if consume(p, .RIGHT_PAREN, "Expect ) after expression") {
+			return grouping_expr(expr)
+		}
+		return nil
 	}
 
-	// TODO: should throw
-	panic("TODO")
+	add_error(p, "Expect expression")
+
+	return nil
+}
+
+add_error :: proc(p: ^Parser, msg: string) {
+	append(&p.result.errors, Error{msg = msg})
+}
+
+consume :: proc(p: ^Parser, type: Token_Type, msg: string) -> bool {
+	if !has_content(p) || p.tokens[p.current].type != type {
+		add_error(p, msg)
+		return false
+	}
+	return true
 }
 
 //
@@ -157,7 +173,6 @@ advance :: proc(p: ^Parser) -> Token {
 	return result
 }
 peek :: proc(p: ^Parser) -> Token {
-	// fmt.println("peek", p.current, len(p.tokens))
 	return p.tokens[p.current]
 }
 previous :: proc(p: ^Parser) -> Token {

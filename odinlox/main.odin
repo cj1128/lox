@@ -20,7 +20,7 @@ main :: proc() {
 	if len(track.allocation_map) > 0 {
 		fmt.println("==== Memory Leak ====")
 		for _, v in track.allocation_map {
-			fmt.printf("%v Leaked %v bytes: %#v\n", v.location, v.size)
+			fmt.printf("%v Leaked %v bytes: %#v\n", v.location, v.size, v.err)
 		}
 	}
 }
@@ -69,18 +69,18 @@ run :: proc(code: string) {
 
 	// print tokens
 	{
-		fmt.println("#### tokens ####")
-		for t in tokens {
-			fmt.println("--", t)
-		}
+		// fmt.println("#### tokens ####")
+		// for t in tokens {
+		// 	fmt.println("--", t)
+		// }
 	}
 
 	parsed := parser.parse(tokens[:])
-	// defer parser.destroy(parsed)
+	defer parser.destroy(parsed)
 	if len(parsed.errors) > 0 {
 		fmt.eprintln("failed to parse:")
-		for e in errors {
-			fmt.eprintf("error: %v\n", e)
+		for e in parsed.errors {
+			fmt.eprintf("error: %v\n", e.msg)
 		}
 		return
 	}
