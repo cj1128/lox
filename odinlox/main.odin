@@ -92,6 +92,21 @@ run :: proc(code: string) {
 		defer delete(str)
 		fmt.println(str)
 	}
+
+	// evaluate expresion
+	v, err := evaluate(parsed.ast)
+	if err != nil {
+		fmt.eprintf("error: %v\n", err)
+		delete(err.(string))
+	} else {
+		fmt.println("#### Evaluate ####")
+		str, ok := v.(string)
+		if ok {
+			fmt.printf("%q\n", str)
+		} else {
+			fmt.println(v)
+		}
+	}
 }
 
 run_prompt :: proc() {

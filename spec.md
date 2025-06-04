@@ -62,6 +62,11 @@
 
 ## Operators
 
+- `+` operator is overloaded to support both adding numbers and concatenating strings
+- the equality operators support operands of any type, even mixed ones
+
+Precedence goes from high to low.
+
 |      Name      |      Operators       | Associativity |
 | :------------: | :------------------: | :-----------: |
 |     Unary      |       `!`, `+`       |     Right     |
@@ -71,7 +76,6 @@
 |  Logical And   |        `and`         |     Left      |
 |   Logical Or   |         `or`         |     Left      |
 |    Equality    |      `==`, `!=`      |     Left      |
-
 
 ## Grammer
 

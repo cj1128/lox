@@ -14,7 +14,11 @@ pp :: proc(ast: ^Expr, allocator := context.allocator) -> string {
 format :: proc(sb: ^strings.Builder, expr: ^Expr) {
 	switch e in expr.variant {
 	case ^Literal:
-		fmt.sbprint(sb, e.value)
+		if str, ok := e.value.(string); ok {
+			fmt.sbprintf(sb, "%q", str)
+		} else {
+			fmt.sbprint(sb, e.value)
+		}
 	case ^Unary:
 		parenthesize(sb, e.operator.lexeme, e.right)
 	case ^Binary:

@@ -122,7 +122,7 @@
   |     Factor     |       `*`, `/`       |     Left      |
   |     Unary      |       `!`, `-`       |     Right     |
 - There are many grammars you can define that match the same language. The choice for how to model a particular language is partially a matter of taste and partially a pragmatic one.
-- Enahnced grammar without ambiguity
+- Enahnced expression grammar without ambiguity
   ```text
   expression -> equality
   equality -> comparison ( ( "!=" | "==" ) comparison )*
@@ -142,12 +142,8 @@
 
 ## Chapter 7: Evaluating Expressions
 
-- types
-
-  - `nil` -> `nil`
-  - `boolean` -> `bool`
-  - `number` -> `float64`
-  - `string` -> `string`
+- Lox follows Ruby's simple rule: false and nil are falsey, and everything else is truthy.
+- The equality operators support operands of any type, even mixed ones.
 
 ## Chapter 8: Statements and State
 
