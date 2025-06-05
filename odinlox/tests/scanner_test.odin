@@ -9,7 +9,7 @@ import "core:testing"
 basic_scanner :: proc(t: ^testing.T) {
 	tokens, errors := scanner.scan(
 		`( ) { } , . - + ; / *
-  ! != = == > >= < <=
+  ! ? : != = == > >= < <=
   identifier "string" 1.234000
   and class else fun for if nil or print return super this true false var while
 `,
@@ -29,6 +29,8 @@ basic_scanner :: proc(t: ^testing.T) {
 		{type = .SLASH},
 		{type = .STAR},
 		{type = .BANG},
+		{type = .QUESTION},
+		{type = .COLON},
 		{type = .BANG_EQUAL},
 		{type = .EQUAL},
 		{type = .EQUAL_EQUAL},
@@ -58,12 +60,30 @@ basic_scanner :: proc(t: ^testing.T) {
 		{type = .EOF},
 	}
 
-	for token, i in tokens {
+	for exp, i in expected {
+		token := tokens[i]
+
 		testing.expect(
 			t,
-			token == expected[i],
-			fmt.tprintf("index %d: expected %v, got %v", i, expected[i], token),
+			token.type == exp.type,
+			fmt.tprintf("expected token type %v, got %v", exp.type, token.type),
 		)
+
+		if exp.lexeme != "" {
+			testing.expect(
+				t,
+				token.lexeme == exp.lexeme,
+				fmt.tprintf("expected token lexeme %q, got %q", exp.lexeme, token.lexeme),
+			)
+		}
+
+		if exp.literal != nil {
+			testing.expect(
+				t,
+				token.literal == exp.literal,
+				fmt.tprintf("expected token literal %v, got %v", exp.literal, token.literal),
+			)
+		}
 	}
 }
 

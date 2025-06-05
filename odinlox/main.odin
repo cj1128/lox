@@ -69,10 +69,10 @@ run :: proc(code: string) {
 
 	// print tokens
 	{
-		// fmt.println("#### tokens ####")
-		// for t in tokens {
-		// 	fmt.println("--", t)
-		// }
+		fmt.println("#### tokens ####")
+		for t in tokens {
+			fmt.println("--", t)
+		}
 	}
 
 	parsed := parser.parse(tokens[:])

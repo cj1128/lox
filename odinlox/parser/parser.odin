@@ -45,13 +45,42 @@ destroy :: proc(result: ^ParseResult) {
 }
 
 expression :: proc(p: ^Parser) -> ^Expr {
-	return equality(p)
+	return ternary(p)
 }
+
+ternary :: proc(p: ^Parser) -> ^Expr {
+	expr := comma(p)
+
+	if match(p, {.QUESTION}) {
+		left := expression(p)
+		if consume(p, .COLON, "Expect : after ? operator") {
+			right := expression(p)
+			expr = ternary_expr(expr, left, right)
+		} else {
+			return nil
+		}
+	}
+
+	return expr
+}
+
+comma :: proc(p: ^Parser) -> ^Expr {
+	expr := equality(p)
+
+	for match(p, {.COMMA}) {
+		operator := previous(p)
+		right := equality(p)
+		expr = binary_expr(expr, operator, right)
+	}
+
+	return expr
+}
+
 
 equality :: proc(p: ^Parser) -> ^Expr {
 	expr := comparision(p)
 
-	for match(p, {Token_Type.BANG_EQUAL, Token_Type.EQUAL_EQUAL}) {
+	for match(p, {.BANG_EQUAL, .EQUAL_EQUAL}) {
 		operator := previous(p)
 		right := comparision(p)
 		expr = binary_expr(expr, operator, right)
@@ -126,7 +155,26 @@ primary :: proc(p: ^Parser) -> ^Expr {
 		expr := expression(p)
 		if consume(p, .RIGHT_PAREN, "Expect ) after expression") {
 			return grouping_expr(expr)
+		} else {
+			return nil
 		}
+
+	// Error productions
+	case match(p, {.BANG_EQUAL, .EQUAL_EQUAL}):
+		add_error(p, "Missing left-hand operand")
+		equality(p)
+		return nil
+	case match(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}):
+		add_error(p, "Missing left-hand operand")
+		comparision(p)
+		return nil
+	case match(p, {.PLUS}):
+		add_error(p, "Missing left-hand operand")
+		term(p)
+		return nil
+	case match(p, {.SLASH, .STAR}):
+		add_error(p, "Missing left-hand operand")
+		factor(p)
 		return nil
 	}
 
@@ -144,6 +192,9 @@ consume :: proc(p: ^Parser, type: Token_Type, msg: string) -> bool {
 		add_error(p, msg)
 		return false
 	}
+
+	advance(p)
+
 	return true
 }
 

@@ -139,11 +139,55 @@
 - A parser really has two jobs:
   - Given a valid sequence of tokens, produce a corresponding syntax tree.
   - Given an invalid sequence of tokens, detect any errors and tell the user about their mistakes.
+- Challenges:
+  - Add support for comman expression
+    ```text
+    expression -> comma
+    comma -> equality ("," equality)*
+    equality -> comparison ( ( "!=" | "==" ) comparison )*
+    comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+    term -> factor ( ( "-" | "+" ) factor )*
+    factor -> unary ( ( "*" | "/" ) unary)*
+    unary -> ( "!" | "-" ) unary | primary
+    primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")"
+    ```
+  - Add support for ternary operator
+    ```text
+    expression -> ternary
+    ternary -> comma ("?" expression ":" expression)?
+    comma -> equality ("," equality)*
+    equality -> comparison ( ( "!=" | "==" ) comparison )*
+    comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+    term -> factor ( ( "-" | "+" ) factor )*
+    factor -> unary ( ( "*" | "/" ) unary)*
+    unary -> ( "!" | "-" ) unary | primary
+    primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")"
+    ```
+  - Add error productions to handle each binary operator appearing without a left-hand operand
+    ```text
+    expression -> ternary
+    ternary -> comma ("?" expression ":" expression)?
+    comma -> equality ("," equality)*
+    equality -> comparison ( ( "!=" | "==" ) comparison )*
+    comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+    term -> factor ( ( "-" | "+" ) factor )*
+    factor -> unary ( ( "*" | "/" ) unary)*
+    unary -> ( "!" | "-" ) unary | primary
+    primary ->
+      NUMBER | STRING | "false" | "true" | "nil"
+      | "(" expression ")"
+      // Error productions...
+      | ( "!=" | "==" ) equality
+      | ( ">" | ">=" | "<" | "<=" ) comparison
+      | ( "+" ) term
+      | ( "/" | "*" ) factor
+    ```
 
 ## Chapter 7: Evaluating Expressions
 
 - Lox follows Ruby's simple rule: false and nil are falsey, and everything else is truthy.
 - The equality operators support operands of any type, even mixed ones.
+- Challenges:
 
 ## Chapter 8: Statements and State
 

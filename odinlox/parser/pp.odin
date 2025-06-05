@@ -23,6 +23,8 @@ format :: proc(sb: ^strings.Builder, expr: ^Expr) {
 		parenthesize(sb, e.operator.lexeme, e.right)
 	case ^Binary:
 		parenthesize(sb, e.operator.lexeme, e.left, e.right)
+	case ^Ternary:
+		parenthesize(sb, "?", e.condition, e.left, e.right)
 	case ^Grouping:
 		parenthesize(sb, "grouping", e.content)
 	}

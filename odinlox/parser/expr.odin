@@ -8,6 +8,7 @@ Expr :: struct {
 		^Unary,
 		^Binary,
 		^Grouping,
+		^Ternary,
 	},
 }
 
@@ -23,6 +24,12 @@ Unary :: struct {
 Binary :: struct {
 	using expr: Expr,
 	operator:   Token,
+	left:       ^Expr,
+	right:      ^Expr,
+}
+Ternary :: struct {
+	using expr: Expr,
+	condition:  ^Expr,
 	left:       ^Expr,
 	right:      ^Expr,
 }
@@ -54,6 +61,14 @@ binary_expr :: proc(left: ^Expr, operator: Token, right: ^Expr) -> ^Expr {
 	result := new_expr(Binary)
 	result.left = left
 	result.operator = operator
+	result.right = right
+	return result
+}
+
+ternary_expr :: proc(condition, left, right: ^Expr) -> ^Expr {
+	result := new_expr(Ternary)
+	result.condition = condition
+	result.left = left
 	result.right = right
 	return result
 }

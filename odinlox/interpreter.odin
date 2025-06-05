@@ -10,6 +10,7 @@ Literal :: parser.Literal
 Binary :: parser.Binary
 Unary :: parser.Unary
 Grouping :: parser.Grouping
+Ternary :: parser.Ternary
 
 Value :: scanner.Literal
 
@@ -23,11 +24,7 @@ evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
 		result = e.value
 
 	case ^Unary:
-		v: Value
-		v, err = evaluate(e.right)
-		if err != nil {
-			return
-		}
+		v := evaluate(e.right) or_return
 
 		#partial switch e.operator.type {
 		case .BANG:
@@ -38,22 +35,15 @@ evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
 				err = build_err(e.operator, Must_Be_A_Number)
 				return
 			}
-
 			result = -v.(f64)
+
 		case:
 			panic("unreachable")
 		}
 
 	case ^Binary:
-		left, right: Value
-		left, err = evaluate(e.left)
-		if err != nil {
-			return
-		}
-		right, err = evaluate(e.right)
-		if err != nil {
-			return
-		}
+		left := evaluate(e.left) or_return
+		right := evaluate(e.right) or_return
 
 		#partial switch e.operator.type {
 		case .EQUAL_EQUAL:
@@ -63,6 +53,9 @@ evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
 		case .BANG_EQUAL:
 			result = left != right
 			return
+
+		case .COMMA:
+			return right, nil
 
 		case .PLUS:
 			if is_number(left) && is_number(right) {
@@ -103,8 +96,16 @@ evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
 			panic("unreachable")
 		}
 
+	case ^Ternary:
+		cond := evaluate(e.condition) or_return
+		if is_truthy(cond) {
+			result = evaluate(e.left) or_return
+		} else {
+			result = evaluate(e.right) or_return
+		}
+
 	case ^Grouping:
-		result, err = evaluate(e.content)
+		result = evaluate(e.content) or_return
 	}
 
 	return

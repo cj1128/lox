@@ -149,6 +149,10 @@ scan :: proc(source: string, allocator := context.allocator) -> ([dynamic]Token,
 			add_token(s, .SEMICOLON)
 		case '*':
 			add_token(s, .STAR)
+		case '?':
+			add_token(s, .QUESTION)
+		case ':':
+			add_token(s, .COLON)
 		//
 		case '!':
 			add_token(s, match(s, '=') ? .BANG_EQUAL : .BANG)
