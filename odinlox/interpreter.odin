@@ -5,26 +5,76 @@ import "./scanner"
 import "core:fmt"
 import "core:strings"
 
-Expr :: parser.Expr
-Literal :: parser.Literal
-Binary :: parser.Binary
-Unary :: parser.Unary
-Grouping :: parser.Grouping
-Ternary :: parser.Ternary
-
+Token :: scanner.Token
 Value :: scanner.Literal
 
-Must_Be_A_Number :: "Operand must be a number"
-Must_Be_Numbers :: "Operands must be numbers"
+Stmt :: parser.Stmt
+Expr_Stmt :: parser.Expr_Stmt
+Print_Stmt :: parser.Print_Stmt
+Var_Decl_Stmt :: parser.Var_Decl_Stmt
 
-evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
+Expr :: parser.Expr
+Literal :: parser.Literal_Expr
+Binary :: parser.Binary_Expr
+Unary :: parser.Unary_Expr
+Grouping :: parser.Grouping_Expr
+Ternary :: parser.Ternary_Expr
+Var_Expr :: parser.Var_Expr
+
+Evaluate_Error :: union {
+	Must_Be_Two_Numbers_Or_Two_Strings,
+	Must_Be_A_Number,
+	Must_Be_Numbers,
+	Undefined_Var,
+}
+Must_Be_Two_Numbers_Or_Two_Strings :: struct {
+	operator: Token,
+}
+Must_Be_A_Number :: struct {
+	operator: Token,
+}
+Must_Be_Numbers :: struct {
+	operator: Token,
+}
+Undefined_Var :: struct {
+	var: Token,
+}
+
+evaluate :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
+	switch s in stmt.variant {
+	case ^Print_Stmt:
+		value := evaluate_expr(env, s.expr) or_return
+		fmt.println(value)
+
+	case ^Expr_Stmt:
+		evaluate_expr(env, s.expr) or_return
+
+	case ^Var_Decl_Stmt:
+		value: Value
+		if s.initializer != nil {
+			value = evaluate_expr(env, s.initializer) or_return
+		}
+		env[s.name.lexeme] = value
+	}
+
+	return nil
+}
+
+evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error) {
 	switch e in expr.variant {
+
+	case ^Var_Expr:
+		val, ok := env[e.name.lexeme]
+		if !ok {
+			return nil, Undefined_Var{var = e.name}
+		}
+		return val, nil
 
 	case ^Literal:
 		result = e.value
 
 	case ^Unary:
-		v := evaluate(e.right) or_return
+		v := evaluate_expr(env, e.right) or_return
 
 		#partial switch e.operator.type {
 		case .BANG:
@@ -32,8 +82,7 @@ evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
 
 		case .MINUS:
 			if !is_number(v) {
-				err = build_err(e.operator, Must_Be_A_Number)
-				return
+				return nil, Must_Be_A_Number{operator = e.operator}
 			}
 			result = -v.(f64)
 
@@ -42,8 +91,8 @@ evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
 		}
 
 	case ^Binary:
-		left := evaluate(e.left) or_return
-		right := evaluate(e.right) or_return
+		left := evaluate_expr(env, e.left) or_return
+		right := evaluate_expr(env, e.right) or_return
 
 		#partial switch e.operator.type {
 		case .EQUAL_EQUAL:
@@ -63,13 +112,17 @@ evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
 			} else if is_string(left) && is_string(right) {
 				result = fmt.tprintf("%s%s", left.(string), right.(string))
 			} else {
-				err = build_err(e.operator, "Operands must be two numbers or two strings")
+				err = Must_Be_Two_Numbers_Or_Two_Strings {
+					operator = e.operator,
+				}
 			}
 			return
 		}
 
 		if !is_number(left) || !is_number(right) {
-			err = build_err(e.operator, Must_Be_Numbers)
+			err = Must_Be_Numbers {
+				operator = e.operator,
+			}
 			return
 		}
 
@@ -97,15 +150,15 @@ evaluate :: proc(expr: ^Expr) -> (result: Value, err: Maybe(string)) {
 		}
 
 	case ^Ternary:
-		cond := evaluate(e.condition) or_return
+		cond := evaluate_expr(env, e.condition) or_return
 		if is_truthy(cond) {
-			result = evaluate(e.left) or_return
+			result = evaluate_expr(env, e.left) or_return
 		} else {
-			result = evaluate(e.right) or_return
+			result = evaluate_expr(env, e.right) or_return
 		}
 
 	case ^Grouping:
-		result = evaluate(e.content) or_return
+		result = evaluate_expr(env, e.content) or_return
 	}
 
 	return

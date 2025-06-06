@@ -30,9 +30,9 @@ Expect_Token :: struct {
 }
 
 ParseResult :: struct {
-	ast:    ^Expr,
-	errors: [dynamic]ParseError,
-	arena:  mem.Dynamic_Arena,
+	statements: [dynamic]^Stmt,
+	errors:     [dynamic]ParseError,
+	arena:      mem.Dynamic_Arena,
 }
 
 parse :: proc(tokens: []Token, allocator := context.allocator) -> ^ParseResult {
@@ -43,21 +43,81 @@ parse :: proc(tokens: []Token, allocator := context.allocator) -> ^ParseResult {
 	context.allocator = arena_alloc
 
 	result.errors = make([dynamic]ParseError)
+	result.statements = make([dynamic]^Stmt)
 
 	p := &Parser{tokens = tokens, result = result}
 
-	ast, err := expression(p)
-	if err != nil {
-		append(&result.errors, err)
-	}
-
-	result.ast = ast
+	program(p)
 
 	return result
 }
 destroy :: proc(result: ^ParseResult) {
 	mem.dynamic_arena_destroy(&result.arena)
 	free(result)
+}
+
+//
+//
+//
+
+program :: proc(p: ^Parser) {
+	for has_content(p) {
+		if p.tokens[p.current].type == .EOF {
+			break
+		}
+		stmt, err := declaration(p)
+
+		// TODO: error sync
+		if err != nil {
+			append(&p.result.errors, err)
+			break
+
+		} else {
+			append(&p.result.statements, stmt)
+		}
+	}
+}
+
+declaration :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	if match(p, {.VAR}) {
+		return var_decl(p)
+	}
+
+	return statement(p)
+}
+
+var_decl :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	consume(p, .IDENTIFIER, "Expect variable name")
+	name := previous(p)
+
+	initializer: ^Expr
+
+	if match(p, {.EQUAL}) {
+		initializer = expression(p) or_return
+	}
+
+	consume(p, .SEMICOLON, "Expect ';' after variable declaration") or_return
+	return new_var_decl_stmt(name, initializer), nil
+}
+
+statement :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	if match(p, {.PRINT}) {
+		return print_stmt(p)
+	}
+
+	return expression_stmt(p)
+}
+
+print_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	expr := expression(p) or_return
+	consume(p, .SEMICOLON, "Expect ';' after value") or_return
+	return new_print_stmt(expr), nil
+}
+
+expression_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	expr := expression(p) or_return
+	consume(p, .SEMICOLON, "Expect ';' after value") or_return
+	return new_expr_stmt(expr), nil
 }
 
 expression :: proc(p: ^Parser) -> (^Expr, ParseError) {
@@ -71,7 +131,7 @@ ternary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 		left := expression(p) or_return
 		consume(p, .COLON, "Expect : after ? operator") or_return
 		right := expression(p) or_return
-		expr = ternary_expr(expr, left, right)
+		expr = new_ternary_expr(expr, left, right)
 	}
 
 	return expr, nil
@@ -83,12 +143,11 @@ comma :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	for match(p, {.COMMA}) {
 		operator := previous(p)
 		right := equality(p) or_return
-		expr = binary_expr(expr, operator, right)
+		expr = new_binary_expr(expr, operator, right)
 	}
 
 	return expr, nil
 }
-
 
 equality :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = comparision(p) or_return
@@ -96,7 +155,7 @@ equality :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	for match(p, {.BANG_EQUAL, .EQUAL_EQUAL}) {
 		operator := previous(p)
 		right := comparision(p) or_return
-		expr = binary_expr(expr, operator, right)
+		expr = new_binary_expr(expr, operator, right)
 	}
 
 	return expr, nil
@@ -108,7 +167,7 @@ comparision :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	for match(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}) {
 		operator := previous(p)
 		right := term(p) or_return
-		expr = binary_expr(expr, operator, right)
+		expr = new_binary_expr(expr, operator, right)
 	}
 
 	return expr, nil
@@ -121,7 +180,7 @@ term :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	for match(p, {.MINUS, .PLUS}) {
 		operator := previous(p)
 		right := factor(p) or_return
-		expr = binary_expr(expr, operator, right)
+		expr = new_binary_expr(expr, operator, right)
 	}
 
 	return expr, nil
@@ -134,7 +193,7 @@ factor :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	for match(p, {.SLASH, .STAR}) {
 		operator := previous(p)
 		right := unary(p) or_return
-		expr = binary_expr(expr, operator, right)
+		expr = new_binary_expr(expr, operator, right)
 	}
 
 	return expr, nil
@@ -144,7 +203,7 @@ unary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	if match(p, {.BANG, .MINUS}) {
 		operator := previous(p)
 		right := unary(p) or_return
-		return unary_expr(operator, right), nil
+		return new_unary_expr(operator, right), nil
 	}
 
 	return primary(p)
@@ -153,21 +212,24 @@ unary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 primary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	switch {
 	case match(p, {.FALSE}):
-		return literal_expr(false), nil
+		return new_literal_expr(false), nil
 
 	case match(p, {.TRUE}):
-		return literal_expr(true), nil
+		return new_literal_expr(true), nil
 
 	case match(p, {.NIL}):
-		return literal_expr(nil), nil
+		return new_literal_expr(nil), nil
 
 	case match(p, {.NUMBER, .STRING}):
-		return literal_expr(previous(p).literal), nil
+		return new_literal_expr(previous(p).literal), nil
 
 	case match(p, {.LEFT_PAREN}):
 		expr = expression(p) or_return
 		consume(p, .RIGHT_PAREN, "Expect ) after expression") or_return
-		return grouping_expr(expr), nil
+		return new_grouping_expr(expr), nil
+
+	case match(p, {.IDENTIFIER}):
+		return new_var_expr(previous(p)), nil
 	}
 
 	err = Expect_Expression{}
@@ -204,6 +266,7 @@ consume :: proc(p: ^Parser, type: Token_Type, msg: string) -> ParseError {
 	}
 
 	advance(p)
+
 	return nil
 }
 

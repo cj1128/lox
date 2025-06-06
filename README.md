@@ -191,25 +191,34 @@
 
 ## Chapter 8: Statements and State
 
-- 增加 Statement 语法
-
+- An expression statement lets you place an expression where a statement is expected.
+- A print statement evaluates an expression and displays the result to the user
+- Updated grammar
   ```plain
   program -> statement* EOF
   statement -> exprStmt | printStmt
   exprStmt -> expression ";"
   printStmt -> "print" expression ";"
   ```
-
-- 增加变量声明语法
-
+- Variable declarations are statements, but they are different from other statements, and we’re going to split the statement grammar in two to handle them
+  - It’s as if there are two levels of “precedence” for statements. Some places where a statement is allowed—like inside a block or at the top level—allow any kind of statement, including declarations. Others allow only the “higher” precedence statements that don’t declare names.
   ```plain
   program -> declaration* EOF
   declaration -> varDecl | statement
   varDecl -> "var" IDENTIFIER ("=" expression)? ";"
   ```
+- Need to update grammar for variable access
+  ```
+  primary -> "true" | "false" | "nil"
+    | NUMBER | STRING
+    | "(" expression ")"
+    | IDENTIFIER
+  ```
+- Environments
+  - evalute a undefined variable will got a runtime error
+  - allow variable redefinition
 
-- 增加赋值语法，注意，赋值是一个表达式
-
+- Assignments
   ```plain
   expression -> assignment
   assignment -> IDENTIFIER "=" assignment | equality

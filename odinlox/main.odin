@@ -4,6 +4,7 @@ import "./parser"
 import "./scanner"
 import "core:bufio"
 import "core:fmt"
+import "core:log"
 import "core:mem"
 import "core:os"
 import "core:strings"
@@ -11,6 +12,12 @@ import "core:strings"
 had_error := false
 
 main :: proc() {
+	log_level := log.Level.Info
+	if os.get_env("DEBUG") != "" {
+		log_level = log.Level.Debug
+	}
+	context.logger = log.create_console_logger(log_level, {.Level, .Terminal_Color})
+
 	track: mem.Tracking_Allocator
 	mem.tracking_allocator_init(&track, context.allocator)
 	context.allocator = mem.tracking_allocator(&track)
@@ -35,7 +42,7 @@ _main :: proc() {
 	case 1:
 		run_file(args[0])
 	case:
-		fmt.eprintln("Usage: olox [script]")
+		fmt.println("Usage: olox [script]")
 		os.exit(64)
 	}
 }
@@ -46,6 +53,7 @@ run_file :: proc(fp: string) {
 		fmt.eprintf("failed to read file %s: %v", fp, err)
 		return
 	}
+	defer delete(data)
 
 	run(string(data))
 
@@ -59,52 +67,49 @@ run :: proc(code: string) {
 	defer delete(tokens)
 	defer delete(errors)
 
-	if len(errors) > 0 {
-		fmt.eprintln("failed to scan:")
-		for e in errors {
-			fmt.eprintf("error: %v\n", e)
-		}
-		return
-	}
-
-	// print tokens
 	{
-		fmt.println("#### tokens ####")
+		log.debug("#### Scanner ####")
+
+		if len(errors) > 0 {
+			fmt.eprintln("failed to scan:")
+			for e in errors {
+				fmt.eprintf("-- error: %v\n", e)
+			}
+			return
+		}
+
+		// print tokens
 		for t in tokens {
-			fmt.println("--", t)
+			log.debug("-- token", t)
 		}
 	}
 
+	log.debug("#### Parser ####")
 	parsed := parser.parse(tokens[:])
 	defer parser.destroy(parsed)
+
 	if len(parsed.errors) > 0 {
 		fmt.eprintln("failed to parse:")
 		for e in parsed.errors {
-			fmt.eprintf("error: %v\n", e)
+			fmt.eprintf("-- error: %v\n", e)
 		}
 		return
-	}
-
-	// print AST
-	{
-		fmt.println("#### AST ####")
-		str := parser.pp(parsed.ast)
-		defer delete(str)
-		fmt.println(str)
-	}
-
-	// evaluate expresion
-	v, err := evaluate(parsed.ast)
-	if err != nil {
-		fmt.eprintf("error: %v\n", err)
-		delete(err.(string))
 	} else {
-		fmt.println("#### Evaluate ####")
-		str, ok := v.(string)
-		if ok {
-			fmt.printf("%q\n", str)
-		} else {
-			fmt.println(v)
+		log.debugf("-- %d statements parsed\n", len(parsed.statements))
+	}
+
+	// evaluate statements
+	{
+		log.debug("#### Evaluate ####")
+		env := make(Env)
+		defer delete(env)
+		for stmt in parsed.statements {
+			pp_str := parser.pp(stmt)
+			defer delete(pp_str)
+			log.debugf("-- stmt: %s\n", pp_str)
+			if err := evaluate(&env, stmt); err != nil {
+				fmt.eprintf("-- error: %v\n", err)
+			}
 		}
 	}
 }
@@ -118,7 +123,7 @@ run_prompt :: proc() {
 		fmt.print("> ")
 		line, err := bufio.reader_read_string(&r, '\n', context.allocator)
 		if err != nil {
-			fmt.eprintf("failed to read line: %v", err)
+			fmt.printf("failed to read line: %v", err)
 			return
 		}
 		defer delete(line, context.allocator)

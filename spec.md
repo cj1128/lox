@@ -99,6 +99,7 @@ ifStmt -> "if" "(" expression ")" statement ( "else" statement )?
 block -> "{" declaration* "}"
 exprStmt -> expression ";"
 printStmt -> "print" expression ";"
+
 expression -> assignment
 assignment -> IDENTIFIER "=" assignment | equality
 equality -> comparison ( ( "!=" | "==" ) comparison )*
@@ -108,5 +109,11 @@ multiplication -> unary ( ( "*" | "/" ) unary)*
 unary -> ( "!" | "-" ) unary | call
 call -> primary ( "(" arguments? ")" )*
 arguments -> expression ( "," expression )*
-primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER
+primary -> NUMBER | STRING | "false" | "true" | "nil"
+  | "(" expression ")" | IDENTIFIER
+  // Error productions...
+  | ( "!=" | "==" ) equality
+  | ( ">" | ">=" | "<" | "<=" ) comparison
+  | ( "+" ) term
+  | ( "/" | "*" ) factor
 ```
