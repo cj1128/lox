@@ -80,7 +80,7 @@ run :: proc(code: string) {
 	if len(parsed.errors) > 0 {
 		fmt.eprintln("failed to parse:")
 		for e in parsed.errors {
-			fmt.eprintf("error: %v\n", e.msg)
+			fmt.eprintf("error: %v\n", e)
 		}
 		return
 	}

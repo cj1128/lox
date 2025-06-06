@@ -14,13 +14,24 @@ Parser :: struct {
 	result:  ^ParseResult,
 }
 
-Error :: struct {
-	msg: string,
+ParseError :: union {
+	Missing_Lefthand_Operand,
+	Expect_Expression,
+	Expect_Token,
+}
+Missing_Lefthand_Operand :: struct {
+	token_type: Token_Type,
+}
+Expect_Expression :: struct {
+}
+Expect_Token :: struct {
+	token_type: Token_Type,
+	msg:        string,
 }
 
 ParseResult :: struct {
 	ast:    ^Expr,
-	errors: [dynamic]Error,
+	errors: [dynamic]ParseError,
 	arena:  mem.Dynamic_Arena,
 }
 
@@ -31,11 +42,16 @@ parse :: proc(tokens: []Token, allocator := context.allocator) -> ^ParseResult {
 
 	context.allocator = arena_alloc
 
-	result.errors = make([dynamic]Error)
+	result.errors = make([dynamic]ParseError)
 
 	p := &Parser{tokens = tokens, result = result}
 
-	result.ast = expression(p)
+	ast, err := expression(p)
+	if err != nil {
+		append(&result.errors, err)
+	}
+
+	result.ast = ast
 
 	return result
 }
@@ -44,158 +60,151 @@ destroy :: proc(result: ^ParseResult) {
 	free(result)
 }
 
-expression :: proc(p: ^Parser) -> ^Expr {
+expression :: proc(p: ^Parser) -> (^Expr, ParseError) {
 	return ternary(p)
 }
 
-ternary :: proc(p: ^Parser) -> ^Expr {
-	expr := comma(p)
+ternary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = comma(p) or_return
 
 	if match(p, {.QUESTION}) {
-		left := expression(p)
-		if consume(p, .COLON, "Expect : after ? operator") {
-			right := expression(p)
-			expr = ternary_expr(expr, left, right)
-		} else {
-			return nil
-		}
+		left := expression(p) or_return
+		consume(p, .COLON, "Expect : after ? operator") or_return
+		right := expression(p) or_return
+		expr = ternary_expr(expr, left, right)
 	}
 
-	return expr
+	return expr, nil
 }
 
-comma :: proc(p: ^Parser) -> ^Expr {
-	expr := equality(p)
+comma :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = equality(p) or_return
 
 	for match(p, {.COMMA}) {
 		operator := previous(p)
-		right := equality(p)
+		right := equality(p) or_return
 		expr = binary_expr(expr, operator, right)
 	}
 
-	return expr
+	return expr, nil
 }
 
 
-equality :: proc(p: ^Parser) -> ^Expr {
-	expr := comparision(p)
+equality :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = comparision(p) or_return
 
 	for match(p, {.BANG_EQUAL, .EQUAL_EQUAL}) {
 		operator := previous(p)
-		right := comparision(p)
+		right := comparision(p) or_return
 		expr = binary_expr(expr, operator, right)
 	}
 
-	return expr
+	return expr, nil
 }
 
-comparision :: proc(p: ^Parser) -> ^Expr {
-	expr := term(p)
+comparision :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = term(p) or_return
 
 	for match(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}) {
 		operator := previous(p)
-		right := term(p)
+		right := term(p) or_return
 		expr = binary_expr(expr, operator, right)
 	}
 
-	return expr
+	return expr, nil
 }
 
 // "+" "-"
-term :: proc(p: ^Parser) -> ^Expr {
-	expr := factor(p)
+term :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = factor(p) or_return
 
 	for match(p, {.MINUS, .PLUS}) {
 		operator := previous(p)
-		right := factor(p)
+		right := factor(p) or_return
 		expr = binary_expr(expr, operator, right)
 	}
 
-	return expr
+	return expr, nil
 }
 
 // "*" "/"
-factor :: proc(p: ^Parser) -> ^Expr {
-	expr := unary(p)
+factor :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = unary(p) or_return
 
 	for match(p, {.SLASH, .STAR}) {
 		operator := previous(p)
-		right := unary(p)
+		right := unary(p) or_return
 		expr = binary_expr(expr, operator, right)
 	}
 
-	return expr
+	return expr, nil
 }
 
-unary :: proc(p: ^Parser) -> ^Expr {
+unary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	if match(p, {.BANG, .MINUS}) {
 		operator := previous(p)
-		right := unary(p)
-		return unary_expr(operator, right)
+		right := unary(p) or_return
+		return unary_expr(operator, right), nil
 	}
 
 	return primary(p)
 }
 
-primary :: proc(p: ^Parser) -> ^Expr {
+primary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	switch {
 	case match(p, {.FALSE}):
-		return literal_expr(false)
+		return literal_expr(false), nil
 
 	case match(p, {.TRUE}):
-		return literal_expr(true)
+		return literal_expr(true), nil
 
 	case match(p, {.NIL}):
-		return literal_expr(nil)
+		return literal_expr(nil), nil
 
 	case match(p, {.NUMBER, .STRING}):
-		return literal_expr(previous(p).literal)
+		return literal_expr(previous(p).literal), nil
 
 	case match(p, {.LEFT_PAREN}):
-		expr := expression(p)
-		if consume(p, .RIGHT_PAREN, "Expect ) after expression") {
-			return grouping_expr(expr)
-		} else {
-			return nil
-		}
-
-	// Error productions
-	case match(p, {.BANG_EQUAL, .EQUAL_EQUAL}):
-		add_error(p, "Missing left-hand operand")
-		equality(p)
-		return nil
-	case match(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}):
-		add_error(p, "Missing left-hand operand")
-		comparision(p)
-		return nil
-	case match(p, {.PLUS}):
-		add_error(p, "Missing left-hand operand")
-		term(p)
-		return nil
-	case match(p, {.SLASH, .STAR}):
-		add_error(p, "Missing left-hand operand")
-		factor(p)
-		return nil
+		expr = expression(p) or_return
+		consume(p, .RIGHT_PAREN, "Expect ) after expression") or_return
+		return grouping_expr(expr), nil
 	}
 
-	add_error(p, "Expect expression")
+	err = Expect_Expression{}
 
-	return nil
+	// Error productions
+	label_missing_lefthand_operand: {
+		token: Token
+		switch {
+		case match(p, {.BANG_EQUAL, .EQUAL_EQUAL}):
+			token = previous(p)
+			equality(p)
+		case match(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}):
+			token = previous(p)
+			comparision(p)
+		case match(p, {.PLUS}):
+			token = previous(p)
+			comparision(p)
+		case match(p, {.SLASH, .STAR}):
+			token = previous(p)
+			factor(p)
+		case:
+			break label_missing_lefthand_operand
+		}
+
+		return nil, Missing_Lefthand_Operand{token_type = token.type}
+	}
+
+	return nil, err
 }
 
-add_error :: proc(p: ^Parser, msg: string) {
-	append(&p.result.errors, Error{msg = msg})
-}
-
-consume :: proc(p: ^Parser, type: Token_Type, msg: string) -> bool {
+consume :: proc(p: ^Parser, type: Token_Type, msg: string) -> ParseError {
 	if !has_content(p) || p.tokens[p.current].type != type {
-		add_error(p, msg)
-		return false
+		return Expect_Token{msg = msg, token_type = type}
 	}
 
 	advance(p)
-
-	return true
+	return nil
 }
 
 //
