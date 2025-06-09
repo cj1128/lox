@@ -10,6 +10,7 @@ Expr :: struct {
 		^Grouping_Expr,
 		^Ternary_Expr,
 		^Var_Expr,
+		^Assignment_Expr,
 	},
 }
 
@@ -41,6 +42,11 @@ Grouping_Expr :: struct {
 Var_Expr :: struct {
 	using expr: Expr,
 	name:       Token,
+}
+Assignment_Expr :: struct {
+	using expr: Expr,
+	name:       Token,
+	value:      ^Expr,
 }
 
 new_expr :: proc($T: typeid) -> ^T {
@@ -87,5 +93,12 @@ new_grouping_expr :: proc(expr: ^Expr) -> ^Expr {
 new_var_expr :: proc(name: Token) -> ^Expr {
 	result := new_expr(Var_Expr)
 	result.name = name
+	return result
+}
+
+new_assignment_expr :: proc(name: Token, value: ^Expr) -> ^Expr {
+	result := new_expr(Assignment_Expr)
+	result.name = name
+	result.value = value
 	return result
 }

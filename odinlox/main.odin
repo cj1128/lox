@@ -101,13 +101,13 @@ run :: proc(code: string) {
 	// evaluate statements
 	{
 		log.debug("#### Evaluate ####")
-		env := make(Env)
-		defer delete(env)
+		env := new_env()
+		defer destroy_env(env)
 		for stmt in parsed.statements {
 			pp_str := parser.pp(stmt)
 			defer delete(pp_str)
-			log.debugf("-- stmt: %s\n", pp_str)
-			if err := evaluate(&env, stmt); err != nil {
+			log.debugf("-- stmt: %s", pp_str)
+			if err := evaluate(env, stmt); err != nil {
 				fmt.eprintf("-- error: %v\n", err)
 			}
 		}

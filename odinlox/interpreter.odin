@@ -12,6 +12,7 @@ Stmt :: parser.Stmt
 Expr_Stmt :: parser.Expr_Stmt
 Print_Stmt :: parser.Print_Stmt
 Var_Decl_Stmt :: parser.Var_Decl_Stmt
+Block_Stmt :: parser.Block_Stmt
 
 Expr :: parser.Expr
 Literal :: parser.Literal_Expr
@@ -20,6 +21,7 @@ Unary :: parser.Unary_Expr
 Grouping :: parser.Grouping_Expr
 Ternary :: parser.Ternary_Expr
 Var_Expr :: parser.Var_Expr
+Assignment_Expr :: parser.Assignment_Expr
 
 Evaluate_Error :: union {
 	Must_Be_Two_Numbers_Or_Two_Strings,
@@ -42,6 +44,12 @@ Undefined_Var :: struct {
 
 evaluate :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
 	switch s in stmt.variant {
+	case ^Block_Stmt:
+		sub_env := new_env(env)
+		for stmt in s.stmts {
+			evaluate(sub_env, stmt) or_return
+		}
+
 	case ^Print_Stmt:
 		value := evaluate_expr(env, s.expr) or_return
 		fmt.println(value)
@@ -54,7 +62,7 @@ evaluate :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
 		if s.initializer != nil {
 			value = evaluate_expr(env, s.initializer) or_return
 		}
-		env[s.name.lexeme] = value
+		env_define_var(env, s.name.lexeme, value)
 	}
 
 	return nil
@@ -64,11 +72,21 @@ evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_E
 	switch e in expr.variant {
 
 	case ^Var_Expr:
-		val, ok := env[e.name.lexeme]
+		val, ok := env_lookup_var(env, e.name.lexeme)
 		if !ok {
 			return nil, Undefined_Var{var = e.name}
 		}
 		return val, nil
+
+	case ^Assignment_Expr:
+		value := evaluate_expr(env, e.value) or_return
+		ok := env_assign_var(env, e.name.lexeme, value)
+
+		if !ok {
+			return nil, Undefined_Var{var = e.name}
+		}
+
+		return value, nil
 
 	case ^Literal:
 		result = e.value

@@ -18,6 +18,7 @@ ParseError :: union {
 	Missing_Lefthand_Operand,
 	Expect_Expression,
 	Expect_Token,
+	InvalidAssignmentTarget,
 }
 Missing_Lefthand_Operand :: struct {
 	token_type: Token_Type,
@@ -27,6 +28,9 @@ Expect_Expression :: struct {
 Expect_Token :: struct {
 	token_type: Token_Type,
 	msg:        string,
+}
+InvalidAssignmentTarget :: struct {
+	token: Token,
 }
 
 ParseResult :: struct {
@@ -105,7 +109,24 @@ statement :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 		return print_stmt(p)
 	}
 
+	if match(p, {.LEFT_BRACE}) {
+		stmts := block_stmt(p) or_return
+		return new_block_stmt(stmts), nil
+	}
+
 	return expression_stmt(p)
+}
+
+block_stmt :: proc(p: ^Parser) -> (stmts: []^Stmt, err: ParseError) {
+	result := make([dynamic]^Stmt)
+
+	for has_content(p) && !check(p, .RIGHT_BRACE) {
+		append(&result, declaration(p) or_return)
+	}
+
+	consume(p, .RIGHT_BRACE, "Expect '}' after block") or_return
+
+	return result[:], nil
 }
 
 print_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
@@ -121,29 +142,47 @@ expression_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 }
 
 expression :: proc(p: ^Parser) -> (^Expr, ParseError) {
-	return ternary(p)
+	return comma(p)
 }
 
-ternary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
-	expr = comma(p) or_return
+comma :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = assignment(p) or_return
 
-	if match(p, {.QUESTION}) {
-		left := expression(p) or_return
-		consume(p, .COLON, "Expect : after ? operator") or_return
-		right := expression(p) or_return
-		expr = new_ternary_expr(expr, left, right)
+	for match(p, {.COMMA}) {
+		operator := previous(p)
+		right := assignment(p) or_return
+		expr = new_binary_expr(expr, operator, right)
 	}
 
 	return expr, nil
 }
 
-comma :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+assignment :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	left := ternary(p) or_return
+
+	if match(p, {.EQUAL}) {
+		equals := previous(p)
+		value := assignment(p) or_return
+
+		target, ok := left.variant.(^Var_Expr)
+		if !ok {
+			return nil, InvalidAssignmentTarget{token = equals}
+		}
+
+		return new_assignment_expr(target.name, value), nil
+	}
+
+	return left, nil
+}
+
+ternary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = equality(p) or_return
 
-	for match(p, {.COMMA}) {
-		operator := previous(p)
-		right := equality(p) or_return
-		expr = new_binary_expr(expr, operator, right)
+	if match(p, {.QUESTION}) {
+		left := assignment(p) or_return
+		consume(p, .COLON, "Expect : after ? operator") or_return
+		right := assignment(p) or_return
+		expr = new_ternary_expr(expr, left, right)
 	}
 
 	return expr, nil

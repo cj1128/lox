@@ -13,14 +13,17 @@ pp :: proc(stmt: ^Stmt, allocator := context.allocator) -> string {
 
 format_stmt :: proc(sb: ^strings.Builder, stmt: ^Stmt) {
 	switch s in stmt.variant {
+	case ^Block_Stmt:
+		p_stmt(sb, "block-stmt", ..s.stmts)
+
 	case ^Print_Stmt:
-		parenthesize(sb, "print-stmt", s.expr)
+		p_expr(sb, "print-stmt", s.expr)
 
 	case ^Expr_Stmt:
-		parenthesize(sb, "expr-stmt", s.expr)
+		p_expr(sb, "expr-stmt", s.expr)
 
 	case ^Var_Decl_Stmt:
-		parenthesize_many(sb, {"var-decl-stmt", s.name.lexeme}, s.initializer)
+		p_m_expr(sb, {"var-decl-stmt", s.name.lexeme}, s.initializer)
 	}
 }
 
@@ -32,24 +35,50 @@ format_expr :: proc(sb: ^strings.Builder, expr: ^Expr) {
 		} else {
 			fmt.sbprint(sb, e.value)
 		}
+
 	case ^Unary_Expr:
-		parenthesize(sb, e.operator.lexeme, e.right)
+		p_expr(sb, e.operator.lexeme, e.right)
+
+	case ^Assignment_Expr:
+		p_m_expr(sb, {"=", e.name.lexeme}, e.value)
 
 	case ^Binary_Expr:
-		parenthesize(sb, e.operator.lexeme, e.left, e.right)
+		p_expr(sb, e.operator.lexeme, e.left, e.right)
 
 	case ^Ternary_Expr:
-		parenthesize(sb, "?", e.condition, e.left, e.right)
+		p_expr(sb, "?", e.condition, e.left, e.right)
 
 	case ^Grouping_Expr:
-		parenthesize(sb, "grouping", e.content)
+		p_expr(sb, "grouping", e.content)
 
 	case ^Var_Expr:
-		parenthesize_many(sb, {"var", e.name.lexeme})
+		p_m_expr(sb, {"var", e.name.lexeme})
 	}
 }
 
-parenthesize_many :: proc(sb: ^strings.Builder, names: []string, exprs: ..^Expr) {
+p_m_stmt :: proc(sb: ^strings.Builder, names: []string, stmts: ..^Stmt) {
+	fmt.sbprintf(sb, "(")
+	for name, idx in names {
+		if idx > 0 {
+			strings.write_string(sb, " ")
+		}
+		fmt.sbprintf(sb, "%s", name)
+	}
+
+	for stmt in stmts {
+		if stmt != nil {
+			strings.write_string(sb, " ")
+			format_stmt(sb, stmt)
+		}
+	}
+
+	strings.write_string(sb, ")")
+}
+p_stmt :: proc(sb: ^strings.Builder, name: string, stmts: ..^Stmt) {
+	p_m_stmt(sb, {name}, ..stmts)
+}
+
+p_m_expr :: proc(sb: ^strings.Builder, names: []string, exprs: ..^Expr) {
 	fmt.sbprintf(sb, "(")
 	for name, idx in names {
 		if idx > 0 {
@@ -68,6 +97,6 @@ parenthesize_many :: proc(sb: ^strings.Builder, names: []string, exprs: ..^Expr)
 	strings.write_string(sb, ")")
 }
 
-parenthesize :: proc(sb: ^strings.Builder, name: string, exprs: ..^Expr) {
-	parenthesize_many(sb, {name}, ..exprs)
+p_expr :: proc(sb: ^strings.Builder, name: string, exprs: ..^Expr) {
+	p_m_expr(sb, {name}, ..exprs)
 }

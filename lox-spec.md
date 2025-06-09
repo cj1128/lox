@@ -40,7 +40,7 @@
 
 - functions
   - define function with `fun`
-  - call function using `function()`
+  - call function using `functionName()`
   - the body of a function is always a block, if no `return` found, `nil` is implicitly returned
   - to be compatible with C, function params must <= 8
 - Closures
@@ -83,37 +83,45 @@ Precedence goes from high to low.
   - Identifier: `[a-zA-Z_][a-zA-Z_0-9]*`
   - Number: `[0-9]+(\.[0-9]+)?`
 
-```text
-program -> declaration* EOF
-declaration -> funcDecl | varDecl | statement
-funcDecl -> "func" function
-function -> IDENTIFIER "(" arguments? ")" block
-parameters -> IDENTIFIER ( "," IDENTIFIER )*
-varDecl -> "var" IDENTIFIER ("=" expression)? ";"
-statement -> exprStmt | printStmt | block | ifStmt | whileStmt | forStmt
-forStmt -> "for" "(" ( varDecl | exprStmt | ";" )
-                      expression? ";"
-                      expression? ")" statement
-whileStmt -> "while" "(" expression ")" statement
-ifStmt -> "if" "(" expression ")" statement ( "else" statement )?
-block -> "{" declaration* "}"
-exprStmt -> expression ";"
-printStmt -> "print" expression ";"
+```ebnf
+program = declaration* EOF ;
 
-expression -> assignment
-assignment -> IDENTIFIER "=" assignment | equality
-equality -> comparison ( ( "!=" | "==" ) comparison )*
-comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )*
-addition -> multiplication ( ( "-" | "+" ) multiplication )*
-multiplication -> unary ( ( "*" | "/" ) unary)*
-unary -> ( "!" | "-" ) unary | call
-call -> primary ( "(" arguments? ")" )*
-arguments -> expression ( "," expression )*
-primary -> NUMBER | STRING | "false" | "true" | "nil"
+(* Statement *)
+declaration = funcDecl | varDecl | statement ;
+funcDecl = "fun" function ;
+function = IDENTIFIER "(" arguments? ")" block ;
+parameters = IDENTIFIER ( "," IDENTIFIER )* ;
+varDecl = "var" IDENTIFIER ("=" expression)? ";" ;
+statement = exprStmt | printStmt | block | ifStmt | whileStmt | forStmt ;
+forStmt = "for" "(" ( varDecl | exprStmt | ";" )
+                      expression? ";"
+                      expression? ")" statement ;
+whileStmt = "while" "(" expression ")" statement ;
+ifStmt = "if" "(" expression ")" statement ( "else" statement )? ;
+block = "{" declaration* "}" ;
+exprStmt = expression ";" ;
+printStmt = "print" expression ";" ;
+
+(* Expression *)
+(* expression precedence uses JavaScript as reference *)
+(* comma < assignment: a = 1 , 2 *)
+(* assignment < ternary : a = 2 ? 3 : 4 *)
+expression = comma ;
+comma = assignment ("," assignment)* ;
+assignment = IDENTIFIER "=" assignment | ternary ;
+ternary = equality ("?" assignment : assignment)? ;
+equality = comparison ( ( "!=" | "==" ) comparison )* ;
+comparison = addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
+addition = multiplication ( ( "-" | "+" ) multiplication )* ;
+multiplication = unary ( ( "*" | "/" ) unary)* ;
+unary = ( "!" | "-" ) unary | call ;
+call = primary ( "(" arguments? ")" )* ;
+arguments = expression ( "," expression )* ;
+primary = NUMBER | STRING | "false" | "true" | "nil"
   | "(" expression ")" | IDENTIFIER
-  // Error productions...
+  (* error productions... *)
   | ( "!=" | "==" ) equality
   | ( ">" | ">=" | "<" | "<=" ) comparison
   | ( "+" ) term
-  | ( "/" | "*" ) factor
+  | ( "/" | "*" ) factor ;
 ```
