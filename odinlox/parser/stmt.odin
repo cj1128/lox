@@ -6,6 +6,7 @@ Stmt :: struct {
 		^Print_Stmt,
 		^Var_Decl_Stmt,
 		^Block_Stmt,
+		^If_Stmt,
 	},
 }
 
@@ -25,6 +26,12 @@ Var_Decl_Stmt :: struct {
 Block_Stmt :: struct {
 	using stmt: Stmt,
 	stmts:      []^Stmt,
+}
+If_Stmt :: struct {
+	using stmt:  Stmt,
+	condition:   ^Expr,
+	then_branch: ^Stmt,
+	else_branch: ^Stmt,
 }
 
 new_stmt :: proc($T: typeid) -> ^T {
@@ -55,5 +62,13 @@ new_var_decl_stmt :: proc(name: Token, initializer: ^Expr) -> ^Stmt {
 new_block_stmt :: proc(stmts: []^Stmt) -> ^Stmt {
 	result := new_stmt(Block_Stmt)
 	result.stmts = stmts
+	return result
+}
+
+new_if_stmt :: proc(condition: ^Expr, then_branch, else_branch: ^Stmt) -> ^Stmt {
+	result := new_stmt(If_Stmt)
+	result.condition = condition
+	result.then_branch = then_branch
+	result.else_branch = else_branch
 	return result
 }

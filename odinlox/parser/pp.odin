@@ -22,6 +22,18 @@ format_stmt :: proc(sb: ^strings.Builder, stmt: ^Stmt) {
 	case ^Block_Stmt:
 		p_stmt(sb, "block-stmt", ..s.stmts)
 
+	case ^If_Stmt:
+		fmt.sbprintf(sb, "(if-stmt ")
+		format_expr(sb, s.condition)
+		fmt.sbprintf(sb, " ")
+		format_stmt(sb, s.then_branch)
+
+		if s.else_branch != nil {
+			fmt.sbprintf(sb, " ")
+			format_stmt(sb, s.else_branch)
+		}
+		fmt.sbprintf(sb, ")")
+
 	case ^Print_Stmt:
 		p_expr(sb, "print-stmt", s.expr)
 
@@ -48,6 +60,8 @@ format_expr :: proc(sb: ^strings.Builder, expr: ^Expr) {
 	case ^Assignment_Expr:
 		p_m_expr(sb, {"=", e.name.lexeme}, e.value)
 
+	case ^Logical_Expr:
+		p_expr(sb, e.operator.lexeme, e.left, e.right)
 	case ^Binary_Expr:
 		p_expr(sb, e.operator.lexeme, e.left, e.right)
 

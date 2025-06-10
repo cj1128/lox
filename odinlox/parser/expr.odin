@@ -11,6 +11,7 @@ Expr :: struct {
 		^Ternary_Expr,
 		^Var_Expr,
 		^Assignment_Expr,
+		^Logical_Expr,
 	},
 }
 
@@ -24,6 +25,12 @@ Unary_Expr :: struct {
 	right:      ^Expr,
 }
 Binary_Expr :: struct {
+	using expr: Expr,
+	operator:   Token,
+	left:       ^Expr,
+	right:      ^Expr,
+}
+Logical_Expr :: struct {
 	using expr: Expr,
 	operator:   Token,
 	left:       ^Expr,
@@ -70,6 +77,13 @@ new_unary_expr :: proc(operator: Token, right: ^Expr) -> ^Expr {
 
 new_binary_expr :: proc(left: ^Expr, operator: Token, right: ^Expr) -> ^Expr {
 	result := new_expr(Binary_Expr)
+	result.left = left
+	result.operator = operator
+	result.right = right
+	return result
+}
+new_logical_expr :: proc(left: ^Expr, operator: Token, right: ^Expr) -> ^Expr {
+	result := new_expr(Logical_Expr)
 	result.left = left
 	result.operator = operator
 	result.right = right

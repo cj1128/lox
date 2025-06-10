@@ -13,6 +13,7 @@ Expr_Stmt :: parser.Expr_Stmt
 Print_Stmt :: parser.Print_Stmt
 Var_Decl_Stmt :: parser.Var_Decl_Stmt
 Block_Stmt :: parser.Block_Stmt
+If_Stmt :: parser.If_Stmt
 
 Expr :: parser.Expr
 Literal :: parser.Literal_Expr
@@ -22,6 +23,7 @@ Grouping :: parser.Grouping_Expr
 Ternary :: parser.Ternary_Expr
 Var_Expr :: parser.Var_Expr
 Assignment_Expr :: parser.Assignment_Expr
+Logical_Expr :: parser.Logical_Expr
 
 Evaluate_Error :: union {
 	Must_Be_Two_Numbers_Or_Two_Strings,
@@ -44,6 +46,14 @@ Undefined_Var :: struct {
 
 evaluate :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
 	switch s in stmt.variant {
+	case ^If_Stmt:
+		cond := evaluate_expr(env, s.condition) or_return
+		if is_truthy(cond) {
+			evaluate(env, s.then_branch) or_return
+		} else if s.else_branch != nil {
+			evaluate(env, s.then_branch) or_return
+		}
+
 	case ^Block_Stmt:
 		sub_env := new_env(env)
 		for stmt in s.stmts {
@@ -70,6 +80,21 @@ evaluate :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
 
 evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error) {
 	switch e in expr.variant {
+
+	case ^Logical_Expr:
+		left := evaluate_expr(env, e.left) or_return
+
+		if e.operator.type == .OR {
+			if is_truthy(left) {
+				return left, nil
+			}
+		} else {
+			if !is_truthy(left) {
+				return left, nil
+			}
+		}
+
+		return evaluate_expr(env, e.right)
 
 	case ^Var_Expr:
 		val, ok := env_lookup_var(env, e.name.lexeme)

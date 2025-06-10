@@ -1,0 +1,3 @@
+var first = 1;
+var second = 2;
+if (first) if (second) print 100; else print 200;

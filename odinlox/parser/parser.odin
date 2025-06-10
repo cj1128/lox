@@ -125,7 +125,26 @@ statement :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 		return new_block_stmt(stmts), nil
 	}
 
+	if match(p, {.IF}) {
+		return if_stmt(p)
+	}
+
 	return expression_stmt(p)
+}
+
+if_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	consume(p, .LEFT_PAREN, "Expect '(' after 'if'") or_return
+	condition := expression(p) or_return
+	consume(p, .RIGHT_PAREN, "Expect ')' after if condition") or_return
+
+	then_branch := statement(p) or_return
+	else_branch: ^Stmt
+
+	if match(p, {.ELSE}) {
+		else_branch = statement(p) or_return
+	}
+
+	return new_if_stmt(condition, then_branch, else_branch), nil
 }
 
 block_stmt :: proc(p: ^Parser) -> (stmts: []^Stmt, err: ParseError) {
@@ -187,13 +206,37 @@ assignment :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 }
 
 ternary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
-	expr = equality(p) or_return
+	expr = logical_or(p) or_return
 
 	if match(p, {.QUESTION}) {
 		left := assignment(p) or_return
 		consume(p, .COLON, "Expect : after ? operator") or_return
 		right := assignment(p) or_return
 		expr = new_ternary_expr(expr, left, right)
+	}
+
+	return expr, nil
+}
+
+logical_or :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = logical_and(p) or_return
+
+	if match(p, {.OR}) {
+		operator := previous(p)
+		right := logical_and(p) or_return
+		expr = new_logical_expr(expr, operator, right)
+	}
+
+	return expr, nil
+}
+
+logical_and :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = equality(p) or_return
+
+	if match(p, {.AND}) {
+		operator := previous(p)
+		right := equality(p) or_return
+		expr = new_logical_expr(expr, operator, right)
 	}
 
 	return expr, nil

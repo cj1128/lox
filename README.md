@@ -224,19 +224,20 @@
 
 ### Chapter 9: Control Flow
 
-- 增加 If 语法
-
-  ```plain
-  statement -> exprStmt | printStmt | block | ifStmt
-  ifStmt -> "if" "(" expression ")" statement ("else" statement)?
+- `if` statement
+  - dangling else problem
+    - `if (first) if (second) whenTrue(); else whenFalse();`
+  - It is possible to define a context-free grammar that avoids the ambiguity directly, but it requires splitting most of the statement rules into pairs, one that allows an if with an else and one that doesn’t. It’s annoying.
+  - Instead, most languages and parsers avoid the problem in an ad hoc way. No matter what hack they use to get themselves out of the trouble, they always choose the same interpretation—the else is bound to the nearest if that precedes it.
+  ```ebnf
+  statement = exprStmt | printStmt | block | ifStmt ;
+  ifStmt = "if" "(" expression ")" statement ("else" statement)? ;
   ```
-
-- 增加逻辑操作符语法
-
-  ```plain
-  assignment -> IDENTIFIER "=" assignment | logic_or
-  logic_or -> logic_and ( "or" logic_and )*
-  logic_and -> equality ( "and" equality )*
+- Logical operators, they are **short-circuit**
+  ```ebnf
+  ternary = logic_or ("?" assignment : assignment)? ;
+  logic_or = logic_and ( "or" logic_and )*
+  logic_and = equality ( "and" equality )*
   ```
 
 - 增加 While 语法
