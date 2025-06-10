@@ -1,3 +1,0 @@
-var a = 1;
-print a = 20;
-print a + 30;

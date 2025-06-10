@@ -35,11 +35,12 @@ InvalidAssignmentTarget :: struct {
 
 ParseResult :: struct {
 	statements: [dynamic]^Stmt,
+	expr:       ^Expr,
 	errors:     [dynamic]ParseError,
 	arena:      mem.Dynamic_Arena,
 }
 
-parse :: proc(tokens: []Token, allocator := context.allocator) -> ^ParseResult {
+parse :: proc(tokens: []Token, is_expr := false, allocator := context.allocator) -> ^ParseResult {
 	result := new(ParseResult)
 	mem.dynamic_arena_init(&result.arena)
 	arena_alloc := mem.dynamic_arena_allocator(&result.arena)
@@ -51,7 +52,17 @@ parse :: proc(tokens: []Token, allocator := context.allocator) -> ^ParseResult {
 
 	p := &Parser{tokens = tokens, result = result}
 
-	program(p)
+	if is_expr {
+		expr, err := expression(p)
+		if err != nil {
+			append(&p.result.errors, err)
+		} else {
+			p.result.expr = expr
+		}
+	} else {
+		program(p)
+	}
+
 
 	return result
 }

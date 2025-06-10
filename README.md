@@ -219,6 +219,8 @@
   statement = exprStmt | printStmt | block ;
   block = "{" declaration* "}" ;
   ```
+- Challenges
+  - 1: fairly simple to do, if no semicolon found I will put the parser into expression mode.
 
 ### Chapter 9: Control Flow
 

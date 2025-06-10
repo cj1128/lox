@@ -85,7 +85,16 @@ run :: proc(code: string) {
 	}
 
 	log.debug("#### Parser ####")
-	parsed := parser.parse(tokens[:])
+
+	is_expr := true
+	for t in tokens {
+		if t.type == .SEMICOLON {
+			is_expr = false
+			break
+		}
+	}
+
+	parsed := parser.parse(tokens[:], is_expr)
 	defer parser.destroy(parsed)
 
 	if len(parsed.errors) > 0 {
@@ -94,8 +103,14 @@ run :: proc(code: string) {
 			fmt.eprintf("-- error: %v\n", e)
 		}
 		return
+	}
+
+	if is_expr {
+		pp_str := parser.pp_expr(parsed.expr)
+		defer delete(pp_str)
+		log.debugf("-- expr %s parsed", pp_str)
 	} else {
-		log.debugf("-- %d statements parsed\n", len(parsed.statements))
+		log.debugf("-- %d statements parsed", len(parsed.statements))
 	}
 
 	// evaluate statements
@@ -103,12 +118,21 @@ run :: proc(code: string) {
 		log.debug("#### Evaluate ####")
 		env := new_env()
 		defer destroy_env(env)
-		for stmt in parsed.statements {
-			pp_str := parser.pp(stmt)
-			defer delete(pp_str)
-			log.debugf("-- stmt: %s", pp_str)
-			if err := evaluate(env, stmt); err != nil {
+		if is_expr {
+			value, err := evaluate_expr(env, parsed.expr)
+			if err != nil {
 				fmt.eprintf("-- error: %v\n", err)
+			} else {
+				fmt.println(value)
+			}
+		} else {
+			for stmt in parsed.statements {
+				pp_str := parser.pp(stmt)
+				defer delete(pp_str)
+				log.debugf("-- stmt: %s", pp_str)
+				if err := evaluate(env, stmt); err != nil {
+					fmt.eprintf("-- error: %v\n", err)
+				}
 			}
 		}
 	}

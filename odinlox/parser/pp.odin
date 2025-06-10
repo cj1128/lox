@@ -6,8 +6,14 @@ import "core:strings"
 // pretty-print AST
 
 pp :: proc(stmt: ^Stmt, allocator := context.allocator) -> string {
-	sb := strings.builder_make()
+	sb := strings.builder_make(allocator)
 	format_stmt(&sb, stmt)
+	return strings.to_string(sb)
+}
+
+pp_expr :: proc(expr: ^Expr, allocator := context.allocator) -> string {
+	sb := strings.builder_make(allocator)
+	format_expr(&sb, expr)
 	return strings.to_string(sb)
 }
 
