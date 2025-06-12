@@ -116,20 +116,85 @@ var_decl :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 }
 
 statement :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
-	if match(p, {.PRINT}) {
+	switch {
+	case match(p, {.PRINT}):
 		return print_stmt(p)
-	}
 
-	if match(p, {.LEFT_BRACE}) {
+	case match(p, {.LEFT_BRACE}):
 		stmts := block_stmt(p) or_return
 		return new_block_stmt(stmts), nil
-	}
 
-	if match(p, {.IF}) {
+	case match(p, {.IF}):
 		return if_stmt(p)
+
+	case match(p, {.IF}):
+		return if_stmt(p)
+
+	case match(p, {.WHILE}):
+		return while_stmt(p)
+
+	case match(p, {.FOR}):
+		return for_stmt(p)
+
+	case:
+		return expression_stmt(p)
+	}
+}
+
+for_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	consume(p, .LEFT_PAREN, "Expect '(' after 'for'") or_return
+
+	initializer: ^Stmt
+	if match(p, {.SEMICOLON}) {
+		// initializer is nil
+	} else if match(p, {.VAR}) {
+		initializer = var_decl(p) or_return
+	} else {
+		initializer = expression_stmt(p) or_return
 	}
 
-	return expression_stmt(p)
+	condition: ^Expr
+	if !check(p, .SEMICOLON) {
+		condition = expression(p) or_return
+	}
+	consume(p, .SEMICOLON, "Expect ';' after for loop condition") or_return
+
+	increment: ^Expr
+	if !check(p, .RIGHT_PAREN) {
+		condition = expression(p) or_return
+	}
+	consume(p, .RIGHT_PAREN, "Expect ')' after for clauses") or_return
+
+	body := statement(p) or_return
+
+	if increment != nil {
+		stmts := make([]^Stmt, 2)
+		stmts[0] = body
+		stmts[1] = new_expr_stmt(increment)
+		body = new_block_stmt(stmts)
+	}
+
+	if condition == nil {
+		condition = new_literal_expr(true)
+	}
+	body = new_while_stmt(condition, body)
+
+	if initializer != nil {
+		stmts := make([]^Stmt, 2)
+		stmts[0] = initializer
+		stmts[1] = body
+		body = new_block_stmt(stmts)
+	}
+
+	return body, nil
+}
+
+while_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	consume(p, .LEFT_PAREN, "Expect '(' after 'while'") or_return
+	condition := expression(p) or_return
+	consume(p, .RIGHT_PAREN, "Expect ')' after while condition") or_return
+	body := statement(p) or_return
+	return new_while_stmt(condition, body), nil
 }
 
 if_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {

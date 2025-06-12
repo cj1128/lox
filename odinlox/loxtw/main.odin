@@ -1,7 +1,7 @@
 package lox
 
-import "./parser"
-import "./scanner"
+import "../parser"
+import "../scanner"
 import "core:bufio"
 import "core:fmt"
 import "core:log"
@@ -119,7 +119,7 @@ run :: proc(code: string) {
 		env := new_env()
 		defer destroy_env(env)
 		if is_expr {
-			value, err := evaluate_expr(env, parsed.expr)
+			value, err := evaluate(env, parsed.expr)
 			if err != nil {
 				fmt.eprintf("-- error: %v\n", err)
 			} else {
@@ -130,7 +130,7 @@ run :: proc(code: string) {
 				pp_str := parser.pp(stmt)
 				defer delete(pp_str)
 				log.debugf("-- stmt: %s", pp_str)
-				if err := evaluate(env, stmt); err != nil {
+				if err := execute(env, stmt); err != nil {
 					fmt.eprintf("-- error: %v\n", err)
 				}
 			}

@@ -7,6 +7,7 @@ Stmt :: struct {
 		^Var_Decl_Stmt,
 		^Block_Stmt,
 		^If_Stmt,
+		^While_Stmt,
 	},
 }
 
@@ -31,7 +32,12 @@ If_Stmt :: struct {
 	using stmt:  Stmt,
 	condition:   ^Expr,
 	then_branch: ^Stmt,
-	else_branch: ^Stmt,
+	else_branch: ^Stmt, // may be nil
+}
+While_Stmt :: struct {
+	using stmt: Stmt,
+	condition:  ^Expr,
+	body:       ^Stmt,
 }
 
 new_stmt :: proc($T: typeid) -> ^T {
@@ -70,5 +76,12 @@ new_if_stmt :: proc(condition: ^Expr, then_branch, else_branch: ^Stmt) -> ^Stmt 
 	result.condition = condition
 	result.then_branch = then_branch
 	result.else_branch = else_branch
+	return result
+}
+
+new_while_stmt :: proc(condition: ^Expr, body: ^Stmt) -> ^Stmt {
+	result := new_stmt(While_Stmt)
+	result.condition = condition
+	result.body = body
 	return result
 }

@@ -1,7 +1,7 @@
 package lox
 
-import "./parser"
-import "./scanner"
+import "../parser"
+import "../scanner"
 import "core:fmt"
 import "core:strings"
 
@@ -14,6 +14,7 @@ Print_Stmt :: parser.Print_Stmt
 Var_Decl_Stmt :: parser.Var_Decl_Stmt
 Block_Stmt :: parser.Block_Stmt
 If_Stmt :: parser.If_Stmt
+While_Stmt :: parser.While_Stmt
 
 Expr :: parser.Expr
 Literal :: parser.Literal_Expr
@@ -44,33 +45,38 @@ Undefined_Var :: struct {
 	var: Token,
 }
 
-evaluate :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
+execute :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
 	switch s in stmt.variant {
+	case ^While_Stmt:
+		for is_truthy(evaluate(env, s.condition) or_return) {
+			execute(env, s.body) or_return
+		}
+		return nil
 	case ^If_Stmt:
-		cond := evaluate_expr(env, s.condition) or_return
+		cond := evaluate(env, s.condition) or_return
 		if is_truthy(cond) {
-			evaluate(env, s.then_branch) or_return
+			execute(env, s.then_branch) or_return
 		} else if s.else_branch != nil {
-			evaluate(env, s.then_branch) or_return
+			execute(env, s.then_branch) or_return
 		}
 
 	case ^Block_Stmt:
 		sub_env := new_env(env)
 		for stmt in s.stmts {
-			evaluate(sub_env, stmt) or_return
+			execute(sub_env, stmt) or_return
 		}
 
 	case ^Print_Stmt:
-		value := evaluate_expr(env, s.expr) or_return
+		value := evaluate(env, s.expr) or_return
 		fmt.println(value)
 
 	case ^Expr_Stmt:
-		evaluate_expr(env, s.expr) or_return
+		evaluate(env, s.expr) or_return
 
 	case ^Var_Decl_Stmt:
 		value: Value
 		if s.initializer != nil {
-			value = evaluate_expr(env, s.initializer) or_return
+			value = evaluate(env, s.initializer) or_return
 		}
 		env_define_var(env, s.name.lexeme, value)
 	}
@@ -78,11 +84,11 @@ evaluate :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
 	return nil
 }
 
-evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error) {
+evaluate :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error) {
 	switch e in expr.variant {
 
 	case ^Logical_Expr:
-		left := evaluate_expr(env, e.left) or_return
+		left := evaluate(env, e.left) or_return
 
 		if e.operator.type == .OR {
 			if is_truthy(left) {
@@ -94,7 +100,7 @@ evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_E
 			}
 		}
 
-		return evaluate_expr(env, e.right)
+		return evaluate(env, e.right)
 
 	case ^Var_Expr:
 		val, ok := env_lookup_var(env, e.name.lexeme)
@@ -104,7 +110,7 @@ evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_E
 		return val, nil
 
 	case ^Assignment_Expr:
-		value := evaluate_expr(env, e.value) or_return
+		value := evaluate(env, e.value) or_return
 		ok := env_assign_var(env, e.name.lexeme, value)
 
 		if !ok {
@@ -117,7 +123,7 @@ evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_E
 		result = e.value
 
 	case ^Unary:
-		v := evaluate_expr(env, e.right) or_return
+		v := evaluate(env, e.right) or_return
 
 		#partial switch e.operator.type {
 		case .BANG:
@@ -134,8 +140,8 @@ evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_E
 		}
 
 	case ^Binary:
-		left := evaluate_expr(env, e.left) or_return
-		right := evaluate_expr(env, e.right) or_return
+		left := evaluate(env, e.left) or_return
+		right := evaluate(env, e.right) or_return
 
 		#partial switch e.operator.type {
 		case .EQUAL_EQUAL:
@@ -193,15 +199,15 @@ evaluate_expr :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_E
 		}
 
 	case ^Ternary:
-		cond := evaluate_expr(env, e.condition) or_return
+		cond := evaluate(env, e.condition) or_return
 		if is_truthy(cond) {
-			result = evaluate_expr(env, e.left) or_return
+			result = evaluate(env, e.left) or_return
 		} else {
-			result = evaluate_expr(env, e.right) or_return
+			result = evaluate(env, e.right) or_return
 		}
 
 	case ^Grouping:
-		result = evaluate_expr(env, e.content) or_return
+		result = evaluate(env, e.content) or_return
 	}
 
 	return

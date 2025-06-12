@@ -239,19 +239,16 @@
   logic_or = logic_and ( "or" logic_and )*
   logic_and = equality ( "and" equality )*
   ```
-
-- 增加 While 语法
-
-  ```plain
-  statement -> exprStmt | printStmt | block | ifStmt | whileStmt
-  whileStmt -> "while" "(" expression ")" statement
+- `while` loop, its grammar is the same as in C
+  ```ebnf
+  statement = exprStmt | printStmt | block | ifStmt | whileStmt
+  whileStmt = "while" "(" expression ")" statement
   ```
-
-- 增加 For 语法
-
-  ```plain
-  statement -> exprStmt | printStmt | block | ifStmt | whileStmt | forStmt
-  forStmt -> "for" "(" ( varDecl | exprStmt | ";" )
+- `for` loop
+  - We're going to desugar for loops to the while loops and other statements the interpreter already handles.
+  ```ebnf
+  statement = exprStmt | printStmt | block | ifStmt | whileStmt | forStmt
+  forStmt = "for" "(" ( varDecl | exprStmt | ";" )
                         expression? ";"
                         expression? ")" statement
   ```

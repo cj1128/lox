@@ -1,4 +1,4 @@
-package tests
+package scanner
 
 import "../scanner"
 import "core:fmt"

@@ -34,6 +34,13 @@ format_stmt :: proc(sb: ^strings.Builder, stmt: ^Stmt) {
 		}
 		fmt.sbprintf(sb, ")")
 
+	case ^While_Stmt:
+		fmt.sbprintf(sb, "(while-stmt ")
+		format_expr(sb, s.condition)
+		fmt.sbprintf(sb, " ")
+		format_stmt(sb, s.body)
+		fmt.sbprintf(sb, ")")
+
 	case ^Print_Stmt:
 		p_expr(sb, "print-stmt", s.expr)
 
