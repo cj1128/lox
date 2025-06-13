@@ -54,6 +54,15 @@ format_stmt :: proc(sb: ^strings.Builder, stmt: ^Stmt) {
 
 format_expr :: proc(sb: ^strings.Builder, expr: ^Expr) {
 	switch e in expr.variant {
+	case ^Call_Expr:
+		fmt.sbprintf(sb, "(call ")
+		format_expr(sb, e.callee)
+		for arg in e.arguments {
+			fmt.sbprintf(sb, " ")
+			format_expr(sb, arg)
+		}
+		fmt.sbprintf(sb, ")")
+
 	case ^Literal_Expr:
 		if str, ok := e.value.(string); ok {
 			fmt.sbprintf(sb, "%q", str)

@@ -12,6 +12,7 @@ Expr :: struct {
 		^Var_Expr,
 		^Assignment_Expr,
 		^Logical_Expr,
+		^Call_Expr,
 	},
 }
 
@@ -54,6 +55,12 @@ Assignment_Expr :: struct {
 	using expr: Expr,
 	name:       Token,
 	value:      ^Expr,
+}
+Call_Expr :: struct {
+	using expr: Expr,
+	callee:     ^Expr,
+	paren:      Token,
+	arguments:  []^Expr,
 }
 
 new_expr :: proc($T: typeid) -> ^T {
@@ -114,5 +121,13 @@ new_assignment_expr :: proc(name: Token, value: ^Expr) -> ^Expr {
 	result := new_expr(Assignment_Expr)
 	result.name = name
 	result.value = value
+	return result
+}
+
+new_call_expr :: proc(paren: Token, callee: ^Expr, arguments: []^Expr) -> ^Expr {
+	result := new_expr(Call_Expr)
+	result.paren = paren
+	result.callee = callee
+	result.arguments = arguments
 	return result
 }

@@ -255,13 +255,23 @@
 
 ### Chapter 10: Functions
 
-- 加入函数调用语法
+- function calls
 
-  ```plain
-  unary -> ( "!" | "-" ) unary | call
-  call -> primary ( "(" arguments? ")" )*
-  arguments -> expression ( "," expression )*
-  ```
+  - function call "operator" has higher precedence than any other operator, even the unary ones
+  - syntax change
+    ```ebnf
+    unary = ( "!" | "-" ) unary | call ;
+    call = primary ( "(" arguments? ")" )* ;
+    arguments = expression ( "," expression )* ;
+    ```
+  - having a maximum number of arguments will simplify our bytecode interpreter later, so we will add a max 255 limit
+  - for Lox, we’ll take Python’s approach. Before invoking the callable, we check to see if the argument list’s length matches the callable’s arity.
+
+- native functions
+
+  - `clock()` a native function that returns the number of seconds that have passed since some fixed point in time
+
+  - aa
 
 - 加入函数声明语法
 

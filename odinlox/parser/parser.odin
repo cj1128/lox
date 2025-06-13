@@ -7,11 +7,20 @@ import "core:mem"
 Token :: scanner.Token
 Token_Type :: scanner.Token_Type
 
+// inclusive
+Max_Argument_Count :: 255
+
 @(private)
 Parser :: struct {
 	tokens:  []Token,
 	current: int,
 	result:  ^ParseResult,
+}
+
+ParseWarning :: union {
+	Too_Many_Arguments,
+}
+Too_Many_Arguments :: struct {
 }
 
 ParseError :: union {
@@ -37,6 +46,7 @@ ParseResult :: struct {
 	statements: [dynamic]^Stmt,
 	expr:       ^Expr,
 	errors:     [dynamic]ParseError,
+	warnings:   [dynamic]ParseWarning,
 	arena:      mem.Dynamic_Arena,
 }
 
@@ -94,7 +104,7 @@ program :: proc(p: ^Parser) {
 }
 
 declaration :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
-	if match(p, {.VAR}) {
+	if match(p, .VAR) {
 		return var_decl(p)
 	}
 
@@ -107,7 +117,7 @@ var_decl :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 
 	initializer: ^Expr
 
-	if match(p, {.EQUAL}) {
+	if match(p, .EQUAL) {
 		initializer = expression(p) or_return
 	}
 
@@ -117,23 +127,23 @@ var_decl :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 
 statement :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 	switch {
-	case match(p, {.PRINT}):
+	case match(p, .PRINT):
 		return print_stmt(p)
 
-	case match(p, {.LEFT_BRACE}):
+	case match(p, .LEFT_BRACE):
 		stmts := block_stmt(p) or_return
 		return new_block_stmt(stmts), nil
 
-	case match(p, {.IF}):
+	case match(p, .IF):
 		return if_stmt(p)
 
-	case match(p, {.IF}):
+	case match(p, .IF):
 		return if_stmt(p)
 
-	case match(p, {.WHILE}):
+	case match(p, .WHILE):
 		return while_stmt(p)
 
-	case match(p, {.FOR}):
+	case match(p, .FOR):
 		return for_stmt(p)
 
 	case:
@@ -145,9 +155,9 @@ for_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 	consume(p, .LEFT_PAREN, "Expect '(' after 'for'") or_return
 
 	initializer: ^Stmt
-	if match(p, {.SEMICOLON}) {
+	if match(p, .SEMICOLON) {
 		// initializer is nil
-	} else if match(p, {.VAR}) {
+	} else if match(p, .VAR) {
 		initializer = var_decl(p) or_return
 	} else {
 		initializer = expression_stmt(p) or_return
@@ -205,7 +215,7 @@ if_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 	then_branch := statement(p) or_return
 	else_branch: ^Stmt
 
-	if match(p, {.ELSE}) {
+	if match(p, .ELSE) {
 		else_branch = statement(p) or_return
 	}
 
@@ -243,7 +253,7 @@ expression :: proc(p: ^Parser) -> (^Expr, ParseError) {
 comma :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = assignment(p) or_return
 
-	for match(p, {.COMMA}) {
+	for match(p, .COMMA) {
 		operator := previous(p)
 		right := assignment(p) or_return
 		expr = new_binary_expr(expr, operator, right)
@@ -255,7 +265,7 @@ comma :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 assignment :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	left := ternary(p) or_return
 
-	if match(p, {.EQUAL}) {
+	if match(p, .EQUAL) {
 		equals := previous(p)
 		value := assignment(p) or_return
 
@@ -273,7 +283,7 @@ assignment :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 ternary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = logical_or(p) or_return
 
-	if match(p, {.QUESTION}) {
+	if match(p, .QUESTION) {
 		left := assignment(p) or_return
 		consume(p, .COLON, "Expect : after ? operator") or_return
 		right := assignment(p) or_return
@@ -286,7 +296,7 @@ ternary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 logical_or :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = logical_and(p) or_return
 
-	if match(p, {.OR}) {
+	if match(p, .OR) {
 		operator := previous(p)
 		right := logical_and(p) or_return
 		expr = new_logical_expr(expr, operator, right)
@@ -298,7 +308,7 @@ logical_or :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 logical_and :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = equality(p) or_return
 
-	if match(p, {.AND}) {
+	if match(p, .AND) {
 		operator := previous(p)
 		right := equality(p) or_return
 		expr = new_logical_expr(expr, operator, right)
@@ -310,7 +320,7 @@ logical_and :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 equality :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = comparision(p) or_return
 
-	for match(p, {.BANG_EQUAL, .EQUAL_EQUAL}) {
+	for match_any(p, {.BANG_EQUAL, .EQUAL_EQUAL}) {
 		operator := previous(p)
 		right := comparision(p) or_return
 		expr = new_binary_expr(expr, operator, right)
@@ -322,7 +332,7 @@ equality :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 comparision :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = term(p) or_return
 
-	for match(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}) {
+	for match_any(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}) {
 		operator := previous(p)
 		right := term(p) or_return
 		expr = new_binary_expr(expr, operator, right)
@@ -335,7 +345,7 @@ comparision :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 term :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = factor(p) or_return
 
-	for match(p, {.MINUS, .PLUS}) {
+	for match_any(p, {.MINUS, .PLUS}) {
 		operator := previous(p)
 		right := factor(p) or_return
 		expr = new_binary_expr(expr, operator, right)
@@ -348,7 +358,7 @@ term :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 factor :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	expr = unary(p) or_return
 
-	for match(p, {.SLASH, .STAR}) {
+	for match_any(p, {.SLASH, .STAR}) {
 		operator := previous(p)
 		right := unary(p) or_return
 		expr = new_binary_expr(expr, operator, right)
@@ -358,35 +368,75 @@ factor :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 }
 
 unary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
-	if match(p, {.BANG, .MINUS}) {
+	if match_any(p, {.BANG, .MINUS}) {
 		operator := previous(p)
 		right := unary(p) or_return
 		return new_unary_expr(operator, right), nil
 	}
 
-	return primary(p)
+	return call(p)
+}
+
+call :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
+	expr = primary(p) or_return
+
+	for {
+		if match(p, .LEFT_PAREN) {
+			expr = finish_call(p, expr) or_return
+		} else {
+			break
+		}
+	}
+
+	return expr, nil
+}
+finish_call :: proc(p: ^Parser, callee: ^Expr) -> (expr: ^Expr, err: ParseError) {
+	arguments := make([dynamic]^Expr)
+
+	if !check(p, .RIGHT_PAREN) {
+		should_ignore := false
+		for {
+			if len(arguments) >= Max_Argument_Count {
+				append(&p.result.warnings, Too_Many_Arguments{})
+				should_ignore = true
+			}
+
+			arg := assignment(p) or_return
+			if !should_ignore {
+				append(&arguments, arg)
+			}
+
+			if !match(p, .COMMA) {
+				break
+			}
+		}
+	}
+
+	consume(p, .RIGHT_PAREN, "Expect ')' after arguments") or_return
+	paren := previous(p)
+	return new_call_expr(paren, callee, arguments[:]), nil
 }
 
 primary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	switch {
-	case match(p, {.FALSE}):
+	case match(p, .FALSE):
 		return new_literal_expr(false), nil
 
-	case match(p, {.TRUE}):
+	case match(p, .TRUE):
 		return new_literal_expr(true), nil
 
-	case match(p, {.NIL}):
+	case match(p, .NIL):
 		return new_literal_expr(nil), nil
 
-	case match(p, {.NUMBER, .STRING}):
+	case match_any(p, {.NUMBER, .STRING}):
 		return new_literal_expr(previous(p).literal), nil
 
-	case match(p, {.LEFT_PAREN}):
+	case match(p, .LEFT_PAREN):
 		expr = expression(p) or_return
 		consume(p, .RIGHT_PAREN, "Expect ) after expression") or_return
 		return new_grouping_expr(expr), nil
 
-	case match(p, {.IDENTIFIER}):
+	case match(p, .IDENTIFIER):
 		return new_var_expr(previous(p)), nil
 	}
 
@@ -396,16 +446,16 @@ primary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	label_missing_lefthand_operand: {
 		token: Token
 		switch {
-		case match(p, {.BANG_EQUAL, .EQUAL_EQUAL}):
+		case match_any(p, {.BANG_EQUAL, .EQUAL_EQUAL}):
 			token = previous(p)
 			equality(p)
-		case match(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}):
+		case match_any(p, {.GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL}):
 			token = previous(p)
 			comparision(p)
-		case match(p, {.PLUS}):
+		case match(p, .PLUS):
 			token = previous(p)
 			comparision(p)
-		case match(p, {.SLASH, .STAR}):
+		case match_any(p, {.SLASH, .STAR}):
 			token = previous(p)
 			factor(p)
 		case:
@@ -432,7 +482,10 @@ consume :: proc(p: ^Parser, type: Token_Type, msg: string) -> ParseError {
 //
 //
 
-match :: proc(p: ^Parser, types: []Token_Type) -> bool {
+match :: proc(p: ^Parser, type: Token_Type) -> bool {
+	return match_any(p, {type})
+}
+match_any :: proc(p: ^Parser, types: []Token_Type) -> bool {
 	for type in types {
 		if check(p, type) {
 			advance(p)

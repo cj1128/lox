@@ -1,4 +1,4 @@
-package lox
+package loxtw
 
 Env :: struct {
 	m:         map[string]Value,
@@ -38,21 +38,21 @@ destroy_env :: proc(env: ^Env) {
 	free(g)
 }
 
-env_define_var :: proc(e: ^Env, name: string, value: Value) {
+env_define :: proc(e: ^Env, name: string, value: Value) {
 	e.m[name] = value
 }
 
-env_lookup_var :: proc(e: ^Env, name: string) -> (value: Value, exists: bool) {
+env_lookup :: proc(e: ^Env, name: string) -> (value: Value, exists: bool) {
 	result, ok := e.m[name]
 
 	if !ok && e.enclosing != nil {
-		return env_lookup_var(e.enclosing, name)
+		return env_lookup(e.enclosing, name)
 	}
 
 	return result, ok
 }
 
-env_assign_var :: proc(e: ^Env, name: string, value: Value) -> bool {
+env_assign :: proc(e: ^Env, name: string, value: Value) -> bool {
 	_, ok := e.m[name]
 	if ok {
 		e.m[name] = value
@@ -60,7 +60,7 @@ env_assign_var :: proc(e: ^Env, name: string, value: Value) -> bool {
 	}
 
 	if e.enclosing != nil {
-		return env_assign_var(e.enclosing, name, value)
+		return env_assign(e.enclosing, name, value)
 	}
 
 	return false

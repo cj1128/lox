@@ -1,4 +1,4 @@
-package lox
+package loxtw
 
 import "../parser"
 import "../scanner"
@@ -6,7 +6,16 @@ import "core:fmt"
 import "core:strings"
 
 Token :: scanner.Token
-Value :: scanner.Literal
+Value :: union {
+	f64,
+	string,
+	bool,
+	Callable,
+}
+Callable :: struct {
+	arity: int,
+	call:  proc(env: ^Env, args: []Value) -> (Value, Evaluate_Error),
+}
 
 Stmt :: parser.Stmt
 Expr_Stmt :: parser.Expr_Stmt
@@ -25,12 +34,15 @@ Ternary :: parser.Ternary_Expr
 Var_Expr :: parser.Var_Expr
 Assignment_Expr :: parser.Assignment_Expr
 Logical_Expr :: parser.Logical_Expr
+Call_Expr :: parser.Call_Expr
 
 Evaluate_Error :: union {
 	Must_Be_Two_Numbers_Or_Two_Strings,
 	Must_Be_A_Number,
 	Must_Be_Numbers,
 	Undefined_Var,
+	Not_Callable,
+	Unmatched_Arity,
 }
 Must_Be_Two_Numbers_Or_Two_Strings :: struct {
 	operator: Token,
@@ -44,48 +56,78 @@ Must_Be_Numbers :: struct {
 Undefined_Var :: struct {
 	var: Token,
 }
+Not_Callable :: struct {
+}
+Unmatched_Arity :: struct {
+}
 
-execute :: proc(env: ^Env, stmt: ^Stmt) -> Evaluate_Error {
+execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Evaluate_Error {
 	switch s in stmt.variant {
 	case ^While_Stmt:
 		for is_truthy(evaluate(env, s.condition) or_return) {
-			execute(env, s.body) or_return
+			execute(env, s.body, allocator) or_return
 		}
 		return nil
 	case ^If_Stmt:
-		cond := evaluate(env, s.condition) or_return
+		cond := evaluate(env, s.condition, allocator) or_return
 		if is_truthy(cond) {
-			execute(env, s.then_branch) or_return
+			execute(env, s.then_branch, allocator) or_return
 		} else if s.else_branch != nil {
-			execute(env, s.then_branch) or_return
+			execute(env, s.then_branch, allocator) or_return
 		}
 
 	case ^Block_Stmt:
 		sub_env := new_env(env)
 		for stmt in s.stmts {
-			execute(sub_env, stmt) or_return
+			execute(sub_env, stmt, allocator) or_return
 		}
 
 	case ^Print_Stmt:
-		value := evaluate(env, s.expr) or_return
-		fmt.println(value)
+		value := evaluate(env, s.expr, allocator) or_return
+		print_expr(value)
 
 	case ^Expr_Stmt:
-		evaluate(env, s.expr) or_return
+		evaluate(env, s.expr, allocator) or_return
 
 	case ^Var_Decl_Stmt:
 		value: Value
 		if s.initializer != nil {
-			value = evaluate(env, s.initializer) or_return
+			value = evaluate(env, s.initializer, allocator) or_return
 		}
-		env_define_var(env, s.name.lexeme, value)
+		env_define(env, s.name.lexeme, value)
 	}
 
 	return nil
 }
 
-evaluate :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error) {
+evaluate :: proc(
+	env: ^Env,
+	expr: ^Expr,
+	allocator := context.allocator,
+) -> (
+	result: Value,
+	err: Evaluate_Error,
+) {
 	switch e in expr.variant {
+
+	case ^Call_Expr:
+		callee := evaluate(env, e.callee) or_return
+		arguments := make([dynamic]Value)
+
+		for arg in e.arguments {
+			append(&arguments, evaluate(env, arg) or_return)
+		}
+
+		callable, ok := callee.(Callable)
+		if !ok {
+			return nil, Not_Callable{}
+		}
+
+		if callable.arity != len(arguments) {
+			return nil, Unmatched_Arity{}
+		}
+
+		return callable.call(env, arguments[:])
 
 	case ^Logical_Expr:
 		left := evaluate(env, e.left) or_return
@@ -103,7 +145,7 @@ evaluate :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error)
 		return evaluate(env, e.right)
 
 	case ^Var_Expr:
-		val, ok := env_lookup_var(env, e.name.lexeme)
+		val, ok := env_lookup(env, e.name.lexeme)
 		if !ok {
 			return nil, Undefined_Var{var = e.name}
 		}
@@ -111,7 +153,7 @@ evaluate :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error)
 
 	case ^Assignment_Expr:
 		value := evaluate(env, e.value) or_return
-		ok := env_assign_var(env, e.name.lexeme, value)
+		ok := env_assign(env, e.name.lexeme, value)
 
 		if !ok {
 			return nil, Undefined_Var{var = e.name}
@@ -120,7 +162,7 @@ evaluate :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error)
 		return value, nil
 
 	case ^Literal:
-		result = e.value
+		result = literal_to_value(e.value)
 
 	case ^Unary:
 		v := evaluate(env, e.right) or_return
@@ -159,7 +201,7 @@ evaluate :: proc(env: ^Env, expr: ^Expr) -> (result: Value, err: Evaluate_Error)
 			if is_number(left) && is_number(right) {
 				result = left.(f64) + right.(f64)
 			} else if is_string(left) && is_string(right) {
-				result = fmt.tprintf("%s%s", left.(string), right.(string))
+				result = fmt.aprintf("%s%s", left.(string), right.(string), allocator = allocator)
 			} else {
 				err = Must_Be_Two_Numbers_Or_Two_Strings {
 					operator = e.operator,
@@ -234,6 +276,27 @@ is_string :: proc(v: Value) -> bool {
 	return ok
 }
 
-build_err :: proc(token: scanner.Token, msg: string) -> string {
-	return fmt.aprintf("%s\n[line %d]", msg, token.line)
+literal_to_value :: proc(literal: scanner.Literal) -> Value {
+	switch l in literal {
+	case bool:
+		return l
+	case string:
+		return l
+	case f64:
+		return l
+	}
+	return nil
+}
+
+print_expr :: proc(v: Value) {
+	switch e in v {
+	case f64:
+		fmt.printf("%f\n", e)
+	case bool:
+		fmt.println(e)
+	case string:
+		fmt.println(e)
+	case Callable:
+		fmt.println("--callable--")
+	}
 }

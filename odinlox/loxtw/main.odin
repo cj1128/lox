@@ -1,4 +1,4 @@
-package lox
+package loxtw
 
 import "../parser"
 import "../scanner"
@@ -6,10 +6,9 @@ import "core:bufio"
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import vmem "core:mem/virtual"
 import "core:os"
 import "core:strings"
-
-had_error := false
 
 main :: proc() {
 	log_level := log.Level.Info
@@ -40,14 +39,16 @@ _main :: proc() {
 	case 0:
 		run_prompt()
 	case 1:
-		run_file(args[0])
+		if code := run_file(args[0]); code != 0 {
+			os.exit(code)
+		}
 	case:
 		fmt.println("Usage: olox [script]")
 		os.exit(64)
 	}
 }
 
-run_file :: proc(fp: string) {
+run_file :: proc(fp: string) -> (exit_code: int) {
 	data, err := os.read_entire_file_or_err(fp, context.allocator)
 	if err != nil {
 		fmt.eprintf("failed to read file %s: %v", fp, err)
@@ -55,14 +56,13 @@ run_file :: proc(fp: string) {
 	}
 	defer delete(data)
 
-	run(string(data))
+	exit_code = run(string(data)) ? 0 : 65
 
-	if (had_error) {
-		os.exit(65)
-	}
+	return exit_code
 }
 
-run :: proc(code: string) {
+run :: proc(code: string) -> (ok: bool) {
+	ok = true
 	tokens, errors := scanner.scan(code)
 	defer delete(tokens)
 	defer delete(errors)
@@ -71,6 +71,7 @@ run :: proc(code: string) {
 		log.debug("#### Scanner ####")
 
 		if len(errors) > 0 {
+			ok = false
 			fmt.eprintln("failed to scan:")
 			for e in errors {
 				fmt.eprintf("-- error: %v\n", e)
@@ -98,9 +99,17 @@ run :: proc(code: string) {
 	defer parser.destroy(parsed)
 
 	if len(parsed.errors) > 0 {
-		fmt.eprintln("failed to parse:")
+		ok = false
+		fmt.eprintln("parse errors:")
 		for e in parsed.errors {
 			fmt.eprintf("-- error: %v\n", e)
+		}
+		return
+	}
+	if len(parsed.warnings) > 0 {
+		fmt.eprintln("parse warnings:")
+		for e in parsed.warnings {
+			fmt.eprintf("-- warning: %v\n", e)
 		}
 		return
 	}
@@ -113,29 +122,43 @@ run :: proc(code: string) {
 		log.debugf("-- %d statements parsed", len(parsed.statements))
 	}
 
-	// evaluate statements
+	// evaluate statements/expressions
 	{
-		log.debug("#### Evaluate ####")
 		env := new_env()
+		env_define(env, "clock", Native_Function_Clock)
+
 		defer destroy_env(env)
+		arena: mem.Dynamic_Arena
+		mem.dynamic_arena_init(&arena)
+		arena_alloc := mem.dynamic_arena_allocator(&arena)
+		defer mem.dynamic_arena_destroy(&arena)
+
+		context.allocator = arena_alloc
+
 		if is_expr {
+			log.debug("#### Evaluate Expression ####")
 			value, err := evaluate(env, parsed.expr)
 			if err != nil {
+				ok = false
 				fmt.eprintf("-- error: %v\n", err)
 			} else {
-				fmt.println(value)
+				print_expr(value)
 			}
 		} else {
+			log.debug("#### Execute Statement ####")
 			for stmt in parsed.statements {
 				pp_str := parser.pp(stmt)
 				defer delete(pp_str)
 				log.debugf("-- stmt: %s", pp_str)
 				if err := execute(env, stmt); err != nil {
+					ok = false
 					fmt.eprintf("-- error: %v\n", err)
 				}
 			}
 		}
 	}
+
+	return
 }
 
 run_prompt :: proc() {
