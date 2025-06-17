@@ -10,13 +10,6 @@ Token_Type :: scanner.Token_Type
 // inclusive
 Max_Argument_Count :: 255
 
-@(private)
-Parser :: struct {
-	tokens:  []Token,
-	current: int,
-	result:  ^ParseResult,
-}
-
 ParseWarning :: union {
 	Too_Many_Arguments,
 }
@@ -43,14 +36,21 @@ InvalidAssignmentTarget :: struct {
 }
 
 ParseResult :: struct {
-	statements: [dynamic]^Stmt,
 	expr:       ^Expr,
+	statements: [dynamic]^Stmt,
 	errors:     [dynamic]ParseError,
 	warnings:   [dynamic]ParseWarning,
 	arena:      mem.Dynamic_Arena,
 }
 
-parse :: proc(tokens: []Token, is_expr := false, allocator := context.allocator) -> ^ParseResult {
+@(private)
+Parser :: struct {
+	tokens:  []Token,
+	current: int,
+	result:  ^ParseResult,
+}
+
+parse :: proc(tokens: []Token, try_expr := false, allocator := context.allocator) -> ^ParseResult {
 	result := new(ParseResult)
 	mem.dynamic_arena_init(&result.arena)
 	arena_alloc := mem.dynamic_arena_allocator(&result.arena)
@@ -62,17 +62,20 @@ parse :: proc(tokens: []Token, is_expr := false, allocator := context.allocator)
 
 	p := &Parser{tokens = tokens, result = result}
 
-	if is_expr {
+	program(p)
+
+	if len(p.result.errors) > 0 && try_expr {
+		clear(&p.result.errors)
+		clear(&p.result.warnings)
+		p.current = 0
+
 		expr, err := expression(p)
 		if err != nil {
 			append(&p.result.errors, err)
 		} else {
 			p.result.expr = expr
 		}
-	} else {
-		program(p)
 	}
-
 
 	return result
 }
@@ -108,11 +111,55 @@ declaration :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 		return var_decl(p)
 	}
 
+	if match(p, .FUN) {
+		return function_decl(p, .Function)
+	}
+
 	return statement(p)
 }
 
+Function_Kind :: enum {
+	Function,
+	Method,
+}
+function_decl :: proc(p: ^Parser, kind: Function_Kind) -> (stmt: ^Stmt, err: ParseError) {
+	consume(p, .IDENTIFIER, fmt.aprintf("Expect %s name", kind)) or_return
+	name := previous(p)
+
+	consume(p, .LEFT_PAREN, fmt.aprintf("Expect '(' after %s name", kind)) or_return
+
+	params: [dynamic]Token
+
+	if !check(p, .RIGHT_PAREN) {
+		should_ignore := false
+		for {
+			if len(params) >= Max_Argument_Count {
+				append(&p.result.warnings, Too_Many_Arguments{})
+				should_ignore = true
+			}
+
+			consume(p, .IDENTIFIER, "Expect parameter name") or_return
+			if !should_ignore {
+				append(&params, previous(p))
+			}
+
+			if !match(p, .COMMA) {
+				break
+			}
+		}
+	}
+
+	consume(p, .RIGHT_PAREN, "Expect ')' after parameters") or_return
+
+	consume(p, .LEFT_BRACE, fmt.aprintf("Expect '{' before %s body", kind)) or_return
+
+	body := block_stmt(p) or_return
+
+	return new_function_decl_stmt(name, params[:], body), nil
+}
+
 var_decl :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
-	consume(p, .IDENTIFIER, "Expect variable name")
+	consume(p, .IDENTIFIER, "Expect variable name") or_return
 	name := previous(p)
 
 	initializer: ^Expr
@@ -468,6 +515,7 @@ primary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 	return nil, err
 }
 
+@(require_results)
 consume :: proc(p: ^Parser, type: Token_Type, msg: string) -> ParseError {
 	if !has_content(p) || p.tokens[p.current].type != type {
 		return Expect_Token{msg = msg, token_type = type}

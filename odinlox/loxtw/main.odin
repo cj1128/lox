@@ -10,23 +10,31 @@ import vmem "core:mem/virtual"
 import "core:os"
 import "core:strings"
 
+global_env := new_env()
 main :: proc() {
+	env_define(global_env, "clock", native_function_clock)
+
 	log_level := log.Level.Info
 	if os.get_env("DEBUG") != "" {
 		log_level = log.Level.Debug
 	}
 	context.logger = log.create_console_logger(log_level, {.Level, .Terminal_Color})
 
-	track: mem.Tracking_Allocator
-	mem.tracking_allocator_init(&track, context.allocator)
-	context.allocator = mem.tracking_allocator(&track)
+	// disable mem-tracking now
+	when false {
+		track: mem.Tracking_Allocator
+		mem.tracking_allocator_init(&track, context.allocator)
+		context.allocator = mem.tracking_allocator(&track)
+	}
 
 	_main()
 
-	if len(track.allocation_map) > 0 {
-		fmt.println("==== Memory Leak ====")
-		for _, v in track.allocation_map {
-			fmt.printf("%v Leaked %v bytes: %#v\n", v.location, v.size, v.err)
+	when false {
+		if len(track.allocation_map) > 0 {
+			fmt.println("==== Memory Leak ====")
+			for _, v in track.allocation_map {
+				fmt.printf("%v Leaked %v bytes: %#v\n", v.location, v.size, v.err)
+			}
 		}
 	}
 }
@@ -49,7 +57,7 @@ _main :: proc() {
 }
 
 run_file :: proc(fp: string) -> (exit_code: int) {
-	data, err := os.read_entire_file_or_err(fp, context.allocator)
+	data, err := os.read_entire_file_or_err(fp)
 	if err != nil {
 		fmt.eprintf("failed to read file %s: %v", fp, err)
 		return
@@ -64,8 +72,8 @@ run_file :: proc(fp: string) -> (exit_code: int) {
 run :: proc(code: string) -> (ok: bool) {
 	ok = true
 	tokens, errors := scanner.scan(code)
-	defer delete(tokens)
-	defer delete(errors)
+	// defer delete(tokens)
+	// defer delete(errors)
 
 	{
 		log.debug("#### Scanner ####")
@@ -87,16 +95,8 @@ run :: proc(code: string) -> (ok: bool) {
 
 	log.debug("#### Parser ####")
 
-	is_expr := true
-	for t in tokens {
-		if t.type == .SEMICOLON {
-			is_expr = false
-			break
-		}
-	}
-
-	parsed := parser.parse(tokens[:], is_expr)
-	defer parser.destroy(parsed)
+	parsed := parser.parse(tokens[:], try_expr = true)
+	// defer parser.destroy(parsed)
 
 	if len(parsed.errors) > 0 {
 		ok = false
@@ -114,6 +114,8 @@ run :: proc(code: string) -> (ok: bool) {
 		return
 	}
 
+	is_expr := parsed.expr != nil
+
 	if is_expr {
 		pp_str := parser.pp_expr(parsed.expr)
 		defer delete(pp_str)
@@ -124,20 +126,15 @@ run :: proc(code: string) -> (ok: bool) {
 
 	// evaluate statements/expressions
 	{
-		env := new_env()
-		env_define(env, "clock", Native_Function_Clock)
-
-		defer destroy_env(env)
-		arena: mem.Dynamic_Arena
-		mem.dynamic_arena_init(&arena)
-		arena_alloc := mem.dynamic_arena_allocator(&arena)
-		defer mem.dynamic_arena_destroy(&arena)
-
-		context.allocator = arena_alloc
+		// arena: mem.Dynamic_Arena
+		// mem.dynamic_arena_init(&arena)
+		// arena_alloc := mem.dynamic_arena_allocator(&arena)
+		// defer mem.dynamic_arena_destroy(&arena)
+		// context.allocator = arena_alloc
 
 		if is_expr {
 			log.debug("#### Evaluate Expression ####")
-			value, err := evaluate(env, parsed.expr)
+			value, err := evaluate(global_env, parsed.expr)
 			if err != nil {
 				ok = false
 				fmt.eprintf("-- error: %v\n", err)
@@ -150,10 +147,11 @@ run :: proc(code: string) -> (ok: bool) {
 				pp_str := parser.pp(stmt)
 				defer delete(pp_str)
 				log.debugf("-- stmt: %s", pp_str)
-				if err := execute(env, stmt); err != nil {
+				if err := execute(global_env, stmt); err != nil {
 					ok = false
 					fmt.eprintf("-- error: %v\n", err)
 				}
+				// fmt.println("global env", global_env)
 			}
 		}
 	}
@@ -168,12 +166,12 @@ run_prompt :: proc() {
 
 	for {
 		fmt.print("> ")
-		line, err := bufio.reader_read_string(&r, '\n', context.allocator)
+		line, err := bufio.reader_read_string(&r, '\n')
 		if err != nil {
 			fmt.printf("failed to read line: %v", err)
 			return
 		}
-		defer delete(line, context.allocator)
+		// defer delete(line)
 
 		line = strings.trim_right(line, "\n")
 

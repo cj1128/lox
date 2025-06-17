@@ -87,8 +87,8 @@ Precedence goes from high to low.
 program = declaration* EOF ;
 
 (* Statement *)
-declaration = funcDecl | varDecl | statement ;
-funcDecl = "fun" function ;
+declaration = funDecl | varDecl | statement ;
+funDecl = "fun" function ;
 function = IDENTIFIER "(" arguments? ")" block ;
 parameters = IDENTIFIER ( "," IDENTIFIER )* ;
 varDecl = "var" IDENTIFIER ("=" expression)? ";" ;

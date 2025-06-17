@@ -5,6 +5,7 @@ import "../scanner"
 import "core:fmt"
 import "core:strings"
 
+
 Token :: scanner.Token
 Value :: union {
 	f64,
@@ -12,9 +13,21 @@ Value :: union {
 	bool,
 	Callable,
 }
+
 Callable :: struct {
-	arity: int,
-	call:  proc(env: ^Env, args: []Value) -> (Value, Evaluate_Error),
+	arity:   int,
+	variant: union {
+		Native_Function,
+		Normal_Function,
+	},
+}
+
+Native_Function :: struct {
+	call: proc(env: ^Env, args: []Value) -> (Value, Evaluate_Error),
+}
+Normal_Function :: struct {
+	stmt: ^Function_Decl_Stmt,
+	call: proc(s: Normal_Function, env: ^Env, args: []Value) -> (Value, Evaluate_Error),
 }
 
 Stmt :: parser.Stmt
@@ -35,6 +48,7 @@ Var_Expr :: parser.Var_Expr
 Assignment_Expr :: parser.Assignment_Expr
 Logical_Expr :: parser.Logical_Expr
 Call_Expr :: parser.Call_Expr
+Function_Decl_Stmt :: parser.Function_Decl_Stmt
 
 Evaluate_Error :: union {
 	Must_Be_Two_Numbers_Or_Two_Strings,
@@ -95,6 +109,10 @@ execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Evalu
 			value = evaluate(env, s.initializer, allocator) or_return
 		}
 		env_define(env, s.name.lexeme, value)
+
+	case ^Function_Decl_Stmt:
+		value: Value
+		env_define(env, s.name.lexeme, new_normal_function(s))
 	}
 
 	return nil
@@ -127,7 +145,7 @@ evaluate :: proc(
 			return nil, Unmatched_Arity{}
 		}
 
-		return callable.call(env, arguments[:])
+		return call_callable(callable, env, arguments[:])
 
 	case ^Logical_Expr:
 		left := evaluate(env, e.left) or_return
@@ -255,6 +273,46 @@ evaluate :: proc(
 	return
 }
 
+call_callable :: proc(callable: Callable, env: ^Env, args: []Value) -> (Value, Evaluate_Error) {
+	switch s in callable.variant {
+	case Native_Function:
+		return s.call(env, args)
+
+	case Normal_Function:
+		return s.call(s, env, args)
+	}
+
+	panic("unreachable")
+}
+
+new_normal_function :: proc(stmt: ^Function_Decl_Stmt) -> Callable {
+	return Callable {
+		arity = len(stmt.params),
+		variant = Normal_Function{stmt = stmt, call = normal_function_call},
+	}
+}
+
+normal_function_call :: proc(
+	s: Normal_Function,
+	env: ^Env,
+	args: []Value,
+) -> (
+	value: Value,
+	err: Evaluate_Error,
+) {
+	sub_env := new_env(env)
+
+	for arg, idx in args {
+		env_define(sub_env, s.stmt.params[idx].lexeme, arg)
+	}
+
+	for stmt in s.stmt.body {
+		execute(sub_env, stmt) or_return
+	}
+
+	return nil, nil
+}
+
 is_truthy :: proc(v: Value) -> bool {
 	if v == nil {
 		return false
@@ -297,6 +355,11 @@ print_expr :: proc(v: Value) {
 	case string:
 		fmt.println(e)
 	case Callable:
-		fmt.println("--callable--")
+		switch c in e.variant {
+		case Native_Function:
+			fmt.println("<native-fun>")
+		case Normal_Function:
+			fmt.println("<fun>")
+		}
 	}
 }

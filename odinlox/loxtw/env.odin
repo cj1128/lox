@@ -1,9 +1,13 @@
 package loxtw
 
+import "base:runtime"
+import "core:strings"
+
 Env :: struct {
 	m:         map[string]Value,
 	enclosing: ^Env,
 	global:    ^Env,
+	allocator: runtime.Allocator,
 	// used to track all envs (does not include global env), only global env has this field
 	_envs:     [dynamic]^Env,
 }
@@ -16,8 +20,10 @@ new_env :: proc(enclosing: ^Env = nil, allocator := context.allocator) -> ^Env {
 	if enclosing == nil {
 		env.global = env
 		env._envs = make([dynamic]^Env, allocator)
+		env.allocator = allocator
 	} else {
 		env.global = enclosing.global
+		env.allocator = enclosing.allocator
 		append(&env.global._envs, env)
 	}
 
@@ -27,6 +33,9 @@ new_env :: proc(enclosing: ^Env = nil, allocator := context.allocator) -> ^Env {
 destroy_env :: proc(env: ^Env) {
 	// sub envs
 	for env in env.global._envs {
+		for key in env.m {
+			delete(key)
+		}
 		delete(env.m)
 		free(env)
 	}
@@ -39,7 +48,7 @@ destroy_env :: proc(env: ^Env) {
 }
 
 env_define :: proc(e: ^Env, name: string, value: Value) {
-	e.m[name] = value
+	e.m[strings.clone(name)] = value
 }
 
 env_lookup :: proc(e: ^Env, name: string) -> (value: Value, exists: bool) {

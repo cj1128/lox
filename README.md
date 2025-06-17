@@ -273,14 +273,18 @@
 
   - aa
 
-- 加入函数声明语法
+- function declarations
 
-  ```plain
-  declaration -> funcDecl | varDecl | statement
-  funcDecl -> "func" function
-  function -> IDENTIFIER "(" parameters? ")" block
-  parameters -> IDENTIFIER ( "," IDENTIFIER )*
+  ```ebnf
+  declaration = funDecl | varDecl | statement ;
+  funDecl = "fun" function ;
+  function = IDENTIFIER "(" parameters? ")" block ;
+  parameters = IDENTIFIER ( "," IDENTIFIER )* ;
   ```
+
+- function object
+
+  - function is a top-class value just like numbers, strings
 
 - 加入函数返回语法
 

@@ -1,0 +1,9 @@
+version: "3"
+
+tasks:
+  build:
+    cmds:
+      - odin build . -debug
+  run:
+    cmds:
+      - odin run . -debug -- {{.CLI_ARGS}}

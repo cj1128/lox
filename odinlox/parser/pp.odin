@@ -49,6 +49,28 @@ format_stmt :: proc(sb: ^strings.Builder, stmt: ^Stmt) {
 
 	case ^Var_Decl_Stmt:
 		p_m_expr(sb, {"var-decl-stmt", s.name.lexeme}, s.initializer)
+
+	case ^Function_Decl_Stmt:
+		fmt.sbprintf(sb, "(fun-decl-stmt ")
+
+		// params
+		{
+			fmt.sbprintf(sb, "(%s", s.name.lexeme)
+			for p, idx in s.params {
+				fmt.sbprintf(sb, " %s", p.lexeme)
+			}
+			fmt.sbprintf(sb, ")")
+		}
+
+		// body
+		{
+			for stmt, idx in s.body {
+				fmt.sbprintf(sb, " ")
+				format_stmt(sb, stmt)
+			}
+		}
+
+		fmt.sbprintf(sb, ")")
 	}
 }
 

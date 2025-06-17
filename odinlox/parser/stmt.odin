@@ -8,6 +8,7 @@ Stmt :: struct {
 		^Block_Stmt,
 		^If_Stmt,
 		^While_Stmt,
+		^Function_Decl_Stmt,
 	},
 }
 
@@ -38,6 +39,12 @@ While_Stmt :: struct {
 	using stmt: Stmt,
 	condition:  ^Expr,
 	body:       ^Stmt,
+}
+Function_Decl_Stmt :: struct {
+	using stmt: Stmt,
+	name:       Token,
+	params:     []Token,
+	body:       []^Stmt,
 }
 
 new_stmt :: proc($T: typeid) -> ^T {
@@ -82,6 +89,14 @@ new_if_stmt :: proc(condition: ^Expr, then_branch, else_branch: ^Stmt) -> ^Stmt 
 new_while_stmt :: proc(condition: ^Expr, body: ^Stmt) -> ^Stmt {
 	result := new_stmt(While_Stmt)
 	result.condition = condition
+	result.body = body
+	return result
+}
+
+new_function_decl_stmt :: proc(name: Token, params: []Token, body: []^Stmt) -> ^Stmt {
+	result := new_stmt(Function_Decl_Stmt)
+	result.name = name
+	result.params = params
 	result.body = body
 	return result
 }
