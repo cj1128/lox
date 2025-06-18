@@ -7,6 +7,7 @@ import "core:strings"
 
 
 Token :: scanner.Token
+Literal :: scanner.Literal
 Value :: union {
 	f64,
 	string,
@@ -23,11 +24,11 @@ Callable :: struct {
 }
 
 Native_Function :: struct {
-	call: proc(env: ^Env, args: []Value) -> (Value, Evaluate_Error),
+	call: proc(env: ^Env, args: []Value) -> (Value, Runtime_Error),
 }
 Normal_Function :: struct {
 	stmt: ^Function_Decl_Stmt,
-	call: proc(s: Normal_Function, env: ^Env, args: []Value) -> (Value, Evaluate_Error),
+	call: proc(s: Normal_Function, env: ^Env, args: []Value) -> (Value, Runtime_Error),
 }
 
 Stmt :: parser.Stmt
@@ -39,24 +40,30 @@ If_Stmt :: parser.If_Stmt
 While_Stmt :: parser.While_Stmt
 
 Expr :: parser.Expr
-Literal :: parser.Literal_Expr
-Binary :: parser.Binary_Expr
-Unary :: parser.Unary_Expr
-Grouping :: parser.Grouping_Expr
-Ternary :: parser.Ternary_Expr
+Literal_Expr :: parser.Literal_Expr
+Binary_Expr :: parser.Binary_Expr
+Unary_Expr :: parser.Unary_Expr
+Grouping_Expr :: parser.Grouping_Expr
+Ternary_Expr :: parser.Ternary_Expr
 Var_Expr :: parser.Var_Expr
 Assignment_Expr :: parser.Assignment_Expr
 Logical_Expr :: parser.Logical_Expr
 Call_Expr :: parser.Call_Expr
 Function_Decl_Stmt :: parser.Function_Decl_Stmt
+Return_Stmt :: parser.Return_Stmt
 
-Evaluate_Error :: union {
+Runtime_Error :: union {
 	Must_Be_Two_Numbers_Or_Two_Strings,
 	Must_Be_A_Number,
 	Must_Be_Numbers,
 	Undefined_Var,
 	Not_Callable,
 	Unmatched_Arity,
+	// this is not a real error, we just use error to implement function return
+	Function_Return,
+}
+Function_Return :: struct {
+	value: Value,
 }
 Must_Be_Two_Numbers_Or_Two_Strings :: struct {
 	operator: Token,
@@ -75,7 +82,7 @@ Not_Callable :: struct {
 Unmatched_Arity :: struct {
 }
 
-execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Evaluate_Error {
+execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Runtime_Error {
 	switch s in stmt.variant {
 	case ^While_Stmt:
 		for is_truthy(evaluate(env, s.condition) or_return) {
@@ -98,7 +105,9 @@ execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Evalu
 
 	case ^Print_Stmt:
 		value := evaluate(env, s.expr, allocator) or_return
-		print_expr(value)
+		buf: [128]byte
+		str := value_to_string(value, buf[:])
+		fmt.println(str)
 
 	case ^Expr_Stmt:
 		evaluate(env, s.expr, allocator) or_return
@@ -113,6 +122,10 @@ execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Evalu
 	case ^Function_Decl_Stmt:
 		value: Value
 		env_define(env, s.name.lexeme, new_normal_function(s))
+
+	case ^Return_Stmt:
+		value := evaluate(env, s.value) or_return
+		return Function_Return{value = value}
 	}
 
 	return nil
@@ -124,7 +137,7 @@ evaluate :: proc(
 	allocator := context.allocator,
 ) -> (
 	result: Value,
-	err: Evaluate_Error,
+	err: Runtime_Error,
 ) {
 	switch e in expr.variant {
 
@@ -179,10 +192,10 @@ evaluate :: proc(
 
 		return value, nil
 
-	case ^Literal:
-		result = literal_to_value(e.value)
+	case ^Literal_Expr:
+		result = literal_to_value(e.literal)
 
-	case ^Unary:
+	case ^Unary_Expr:
 		v := evaluate(env, e.right) or_return
 
 		#partial switch e.operator.type {
@@ -199,7 +212,7 @@ evaluate :: proc(
 			panic("unreachable")
 		}
 
-	case ^Binary:
+	case ^Binary_Expr:
 		left := evaluate(env, e.left) or_return
 		right := evaluate(env, e.right) or_return
 
@@ -258,7 +271,7 @@ evaluate :: proc(
 			panic("unreachable")
 		}
 
-	case ^Ternary:
+	case ^Ternary_Expr:
 		cond := evaluate(env, e.condition) or_return
 		if is_truthy(cond) {
 			result = evaluate(env, e.left) or_return
@@ -266,14 +279,14 @@ evaluate :: proc(
 			result = evaluate(env, e.right) or_return
 		}
 
-	case ^Grouping:
+	case ^Grouping_Expr:
 		result = evaluate(env, e.content) or_return
 	}
 
 	return
 }
 
-call_callable :: proc(callable: Callable, env: ^Env, args: []Value) -> (Value, Evaluate_Error) {
+call_callable :: proc(callable: Callable, env: ^Env, args: []Value) -> (Value, Runtime_Error) {
 	switch s in callable.variant {
 	case Native_Function:
 		return s.call(env, args)
@@ -298,7 +311,7 @@ normal_function_call :: proc(
 	args: []Value,
 ) -> (
 	value: Value,
-	err: Evaluate_Error,
+	err: Runtime_Error,
 ) {
 	sub_env := new_env(env)
 
@@ -307,7 +320,15 @@ normal_function_call :: proc(
 	}
 
 	for stmt in s.stmt.body {
-		execute(sub_env, stmt) or_return
+		err := execute(sub_env, stmt)
+
+		if err != nil {
+			if fr, ok := err.(Function_Return); ok {
+				return fr.value, nil
+			} else {
+				return nil, err
+			}
+		}
 	}
 
 	return nil, nil
@@ -346,20 +367,28 @@ literal_to_value :: proc(literal: scanner.Literal) -> Value {
 	return nil
 }
 
-print_expr :: proc(v: Value) {
+literal_to_string :: parser.literal_to_string
+
+value_to_string :: proc(v: Value, buf: []byte, quote_string := false) -> string {
+	if v == nil {
+		return literal_to_string(nil, buf)
+	}
+
 	switch e in v {
 	case f64:
-		fmt.printf("%f\n", e)
+		return literal_to_string(e, buf)
 	case bool:
-		fmt.println(e)
+		return literal_to_string(e, buf)
 	case string:
-		fmt.println(e)
+		return literal_to_string(e, buf, quote_string)
 	case Callable:
 		switch c in e.variant {
 		case Native_Function:
-			fmt.println("<native-fun>")
+			return fmt.bprint(buf, "<native-fun>")
 		case Normal_Function:
-			fmt.println("<fun>")
+			return fmt.bprint(buf, "<fun>")
 		}
 	}
+
+	panic("unreachable")
 }

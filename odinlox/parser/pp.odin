@@ -71,6 +71,9 @@ format_stmt :: proc(sb: ^strings.Builder, stmt: ^Stmt) {
 		}
 
 		fmt.sbprintf(sb, ")")
+
+	case ^Return_Stmt:
+		p_expr(sb, "return-stmt", s.value)
 	}
 }
 
@@ -86,11 +89,8 @@ format_expr :: proc(sb: ^strings.Builder, expr: ^Expr) {
 		fmt.sbprintf(sb, ")")
 
 	case ^Literal_Expr:
-		if str, ok := e.value.(string); ok {
-			fmt.sbprintf(sb, "%q", str)
-		} else {
-			fmt.sbprint(sb, e.value)
-		}
+		buf: [128]byte
+		fmt.sbprint(sb, literal_to_string(e.literal, buf[:], quote_string = true))
 
 	case ^Unary_Expr:
 		p_expr(sb, e.operator.lexeme, e.right)
@@ -157,4 +157,21 @@ p_m_expr :: proc(sb: ^strings.Builder, names: []string, exprs: ..^Expr) {
 
 p_expr :: proc(sb: ^strings.Builder, name: string, exprs: ..^Expr) {
 	p_m_expr(sb, {name}, ..exprs)
+}
+
+literal_to_string :: proc(literal: Literal, buf: []byte, quote_string := false) -> string {
+	if literal == nil {
+		return fmt.bprintf(buf, "nil")
+	}
+
+	switch l in literal {
+	case f64:
+		return fmt.bprintf(buf, "%f", l)
+	case bool:
+		return fmt.bprint(buf, l)
+	case string:
+		return quote_string ? fmt.bprintf(buf, "%q", l) : fmt.bprint(buf, l)
+	}
+
+	panic("unreachable")
 }

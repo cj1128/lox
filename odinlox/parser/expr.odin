@@ -18,7 +18,7 @@ Expr :: struct {
 
 Literal_Expr :: struct {
 	using expr: Expr,
-	value:      scanner.Literal,
+	literal:    scanner.Literal,
 }
 Unary_Expr :: struct {
 	using expr: Expr,
@@ -71,7 +71,7 @@ new_expr :: proc($T: typeid) -> ^T {
 
 new_literal_expr :: proc(value: scanner.Literal) -> ^Expr {
 	result := new_expr(Literal_Expr)
-	result.value = value
+	result.literal = value
 	return result
 }
 

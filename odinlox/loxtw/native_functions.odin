@@ -3,7 +3,7 @@ import "core:time"
 
 import "../parser"
 
-_clock :: proc(env: ^Env, args: []Value) -> (Value, Evaluate_Error) {
+_clock :: proc(env: ^Env, args: []Value) -> (Value, Runtime_Error) {
 	nano := time.to_unix_nanoseconds(time.now())
 	return f64(nano) / 1e9, nil
 }

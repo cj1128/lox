@@ -9,6 +9,7 @@ Stmt :: struct {
 		^If_Stmt,
 		^While_Stmt,
 		^Function_Decl_Stmt,
+		^Return_Stmt,
 	},
 }
 
@@ -45,6 +46,13 @@ Function_Decl_Stmt :: struct {
 	name:       Token,
 	params:     []Token,
 	body:       []^Stmt,
+}
+// keeps the `return` keyword token so we can use its location for error reporting
+Return_Stmt :: struct {
+	using stmt: Stmt,
+	keyword:    Token,
+	// maybe nil
+	value:      ^Expr,
 }
 
 new_stmt :: proc($T: typeid) -> ^T {
@@ -98,5 +106,12 @@ new_function_decl_stmt :: proc(name: Token, params: []Token, body: []^Stmt) -> ^
 	result.name = name
 	result.params = params
 	result.body = body
+	return result
+}
+
+new_return_stmt :: proc(keyword: Token, value: ^Expr) -> ^Stmt {
+	result := new_stmt(Return_Stmt)
+	result.keyword = keyword
+	result.value = value
 	return result
 }

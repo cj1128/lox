@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:mem"
 
 Token :: scanner.Token
+Literal :: scanner.Literal
 Token_Type :: scanner.Token_Type
 
 // inclusive
@@ -26,6 +27,7 @@ Missing_Lefthand_Operand :: struct {
 	token_type: Token_Type,
 }
 Expect_Expression :: struct {
+	token: Token,
 }
 Expect_Token :: struct {
 	token_type: Token_Type,
@@ -50,7 +52,11 @@ Parser :: struct {
 	result:  ^ParseResult,
 }
 
-parse :: proc(tokens: []Token, try_expr := false, allocator := context.allocator) -> ^ParseResult {
+parse :: proc(
+	tokens: []Token,
+	try_parse_as_expr := false,
+	allocator := context.allocator,
+) -> ^ParseResult {
 	result := new(ParseResult)
 	mem.dynamic_arena_init(&result.arena)
 	arena_alloc := mem.dynamic_arena_allocator(&result.arena)
@@ -64,7 +70,7 @@ parse :: proc(tokens: []Token, try_expr := false, allocator := context.allocator
 
 	program(p)
 
-	if len(p.result.errors) > 0 && try_expr {
+	if len(p.result.errors) > 0 && try_parse_as_expr {
 		clear(&p.result.errors)
 		clear(&p.result.warnings)
 		p.current = 0
@@ -177,6 +183,9 @@ statement :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 	case match(p, .PRINT):
 		return print_stmt(p)
 
+	case match(p, .RETURN):
+		return return_stmt(p)
+
 	case match(p, .LEFT_BRACE):
 		stmts := block_stmt(p) or_return
 		return new_block_stmt(stmts), nil
@@ -198,6 +207,19 @@ statement :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 	}
 }
 
+return_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
+	keyword := previous(p)
+	value: ^Expr
+
+	if !check(p, .SEMICOLON) {
+		value = expression(p) or_return
+	}
+
+	consume(p, .SEMICOLON, "Expect ';' after return value") or_return
+	return new_return_stmt(keyword, value), nil
+}
+
+// for is a syntactic sugar
 for_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 	consume(p, .LEFT_PAREN, "Expect '(' after 'for'") or_return
 
@@ -218,7 +240,7 @@ for_stmt :: proc(p: ^Parser) -> (stmt: ^Stmt, err: ParseError) {
 
 	increment: ^Expr
 	if !check(p, .RIGHT_PAREN) {
-		condition = expression(p) or_return
+		increment = expression(p) or_return
 	}
 	consume(p, .RIGHT_PAREN, "Expect ')' after for clauses") or_return
 
@@ -487,7 +509,9 @@ primary :: proc(p: ^Parser) -> (expr: ^Expr, err: ParseError) {
 		return new_var_expr(previous(p)), nil
 	}
 
-	err = Expect_Expression{}
+	err = Expect_Expression {
+		token = p.tokens[p.current],
+	}
 
 	// Error productions
 	label_missing_lefthand_operand: {

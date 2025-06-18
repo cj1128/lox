@@ -286,9 +286,10 @@
 
   - function is a top-class value just like numbers, strings
 
-- 加入函数返回语法
-
-  ```plain
-  statement -> exprStmt | printStmt | block | ifStmt | whileStmt | forStmt | returnStmt
-  returnStmt -> "return" expression? ";"
-  ```
+- return statements
+  - syntax change
+    ```ebnf
+    statement = exprStmt | printStmt | block | ifStmt | whileStmt | forStmt | returnStmt ;
+    returnStmt = "return" expression? ";" ;
+    ```
+  - Every Lox function must return something, even if it contains no return statements at all. We use nil for this.

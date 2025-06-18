@@ -69,7 +69,7 @@ run_file :: proc(fp: string) -> (exit_code: int) {
 	return exit_code
 }
 
-run :: proc(code: string) -> (ok: bool) {
+run :: proc(code: string, try_parse_as_expr := false) -> (ok: bool) {
 	ok = true
 	tokens, errors := scanner.scan(code)
 	// defer delete(tokens)
@@ -95,7 +95,7 @@ run :: proc(code: string) -> (ok: bool) {
 
 	log.debug("#### Parser ####")
 
-	parsed := parser.parse(tokens[:], try_expr = true)
+	parsed := parser.parse(tokens[:], try_parse_as_expr)
 	// defer parser.destroy(parsed)
 
 	if len(parsed.errors) > 0 {
@@ -124,6 +124,7 @@ run :: proc(code: string) -> (ok: bool) {
 		log.debugf("-- %d statements parsed", len(parsed.statements))
 	}
 
+
 	// evaluate statements/expressions
 	{
 		// arena: mem.Dynamic_Arena
@@ -139,7 +140,9 @@ run :: proc(code: string) -> (ok: bool) {
 				ok = false
 				fmt.eprintf("-- error: %v\n", err)
 			} else {
-				print_expr(value)
+				buf: [128]byte
+				str := value_to_string(value, buf[:], quote_string = true)
+				fmt.println(str)
 			}
 		} else {
 			log.debug("#### Execute Statement ####")
@@ -179,6 +182,6 @@ run_prompt :: proc() {
 			break
 		}
 
-		run(line)
+		run(line, try_parse_as_expr = true)
 	}
 }
