@@ -293,3 +293,6 @@
     returnStmt = "return" expression? ";" ;
     ```
   - Every Lox function must return something, even if it contains no return statements at all. We use nil for this.
+- Local Functions and Closures
+  - Closures have been around since the early Lisp days, and language hackers have come up with all manner of ways to implement them. For jlox, we’ll do the simplest thing that works.
+  - We use a `closure` to store surrounding environment

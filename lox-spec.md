@@ -31,6 +31,7 @@
 ## Variables & Control Flow
 
 - use `var` to define a variable, default value is `nil`
+- variable shadowing is allowed
 - control flow
   - `if`
   - `while`

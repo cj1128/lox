@@ -27,8 +27,9 @@ Native_Function :: struct {
 	call: proc(env: ^Env, args: []Value) -> (Value, Runtime_Error),
 }
 Normal_Function :: struct {
-	stmt: ^Function_Decl_Stmt,
-	call: proc(s: Normal_Function, env: ^Env, args: []Value) -> (Value, Runtime_Error),
+	stmt:    ^Function_Decl_Stmt,
+	closure: ^Env,
+	call:    proc(s: Normal_Function, env: ^Env, args: []Value) -> (Value, Runtime_Error),
 }
 
 Stmt :: parser.Stmt
@@ -121,7 +122,7 @@ execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Runti
 
 	case ^Function_Decl_Stmt:
 		value: Value
-		env_define(env, s.name.lexeme, new_normal_function(s))
+		env_define(env, s.name.lexeme, new_normal_function(s, env))
 
 	case ^Return_Stmt:
 		value := evaluate(env, s.value) or_return
@@ -298,10 +299,10 @@ call_callable :: proc(callable: Callable, env: ^Env, args: []Value) -> (Value, R
 	panic("unreachable")
 }
 
-new_normal_function :: proc(stmt: ^Function_Decl_Stmt) -> Callable {
+new_normal_function :: proc(stmt: ^Function_Decl_Stmt, closure: ^Env) -> Callable {
 	return Callable {
 		arity = len(stmt.params),
-		variant = Normal_Function{stmt = stmt, call = normal_function_call},
+		variant = Normal_Function{stmt = stmt, closure = closure, call = normal_function_call},
 	}
 }
 
@@ -313,7 +314,7 @@ normal_function_call :: proc(
 	value: Value,
 	err: Runtime_Error,
 ) {
-	sub_env := new_env(env)
+	sub_env := new_env(s.closure)
 
 	for arg, idx in args {
 		env_define(sub_env, s.stmt.params[idx].lexeme, arg)
