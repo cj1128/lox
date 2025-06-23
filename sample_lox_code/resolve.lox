@@ -1,0 +1,19 @@
+// reference a variable in its initializer
+fun a() {
+  var a = a;
+}
+
+// var already defiend
+fun b() {
+  var a = 1;
+  var a = 2;
+}
+
+// var already defiend
+fun b() {
+  fun c() {}
+  fun c() {}
+}
+
+// top level return
+return 100;

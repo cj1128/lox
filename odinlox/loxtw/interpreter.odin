@@ -177,7 +177,7 @@ evaluate :: proc(
 		return evaluate(env, e.right)
 
 	case ^Var_Expr:
-		val, ok := env_lookup(env, e.name.lexeme)
+		val, ok := env_lookup(env, e)
 		if !ok {
 			return nil, Undefined_Var{var = e.name}
 		}
@@ -185,7 +185,7 @@ evaluate :: proc(
 
 	case ^Assignment_Expr:
 		value := evaluate(env, e.value) or_return
-		ok := env_assign(env, e.name.lexeme, value)
+		ok := env_assign(env, e, value)
 
 		if !ok {
 			return nil, Undefined_Var{var = e.name}

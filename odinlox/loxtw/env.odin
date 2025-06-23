@@ -7,6 +7,7 @@ Env :: struct {
 	m:         map[string]Value,
 	enclosing: ^Env,
 	global:    ^Env,
+	locals:    map[^Expr]int,
 	allocator: runtime.Allocator,
 	// used to track all envs (does not include global env), only global env has this field
 	_envs:     [dynamic]^Env,
@@ -51,26 +52,37 @@ env_define :: proc(e: ^Env, name: string, value: Value) {
 	e.m[strings.clone(name)] = value
 }
 
-env_lookup :: proc(e: ^Env, name: string) -> (value: Value, exists: bool) {
-	result, ok := e.m[name]
-
-	if !ok && e.enclosing != nil {
-		return env_lookup(e.enclosing, name)
+_get_env :: proc(e: ^Env, expr: ^Expr) -> ^Env {
+	distance, ok := e.global.locals[expr]
+	if !ok {
+		return e.global
 	}
 
-	return result, ok
+	result := e
+	for _ in 0 ..< distance {
+		result = result.enclosing
+	}
+
+	return result
 }
 
-env_assign :: proc(e: ^Env, name: string, value: Value) -> bool {
-	_, ok := e.m[name]
-	if ok {
-		e.m[name] = value
-		return true
+env_lookup :: proc(e: ^Env, expr: ^Var_Expr) -> (value: Value, exists: bool) {
+	target_env := _get_env(e, expr)
+
+	return target_env.m[expr.name.lexeme]
+}
+
+// return false is var not found
+env_assign :: proc(e: ^Env, expr: ^Assignment_Expr, value: Value) -> bool {
+	target_env := _get_env(e, expr)
+
+	name := expr.name.lexeme
+
+	_, ok := target_env.m[name]
+	if !ok {
+		return false
 	}
 
-	if e.enclosing != nil {
-		return env_assign(e.enclosing, name, value)
-	}
-
-	return false
+	target_env.m[name] = value
+	return true
 }

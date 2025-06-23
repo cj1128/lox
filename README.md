@@ -222,7 +222,7 @@
 - Challenges
   - 1: fairly simple to do, if no semicolon found I will put the parser into expression mode.
 
-### Chapter 9: Control Flow
+## Chapter 9: Control Flow
 
 - `if` statement
   - dangling else problem
@@ -253,7 +253,7 @@
                         expression? ")" statement
   ```
 
-### Chapter 10: Functions
+## Chapter 10: Functions
 
 - function calls
 
@@ -296,3 +296,19 @@
 - Local Functions and Closures
   - Closures have been around since the early Lisp days, and language hackers have come up with all manner of ways to implement them. For jlox, we’ll do the simplest thing that works.
   - We use a `closure` to store surrounding environment
+
+## Chapter 11: Resolving and Binding
+
+- Static scope
+  - Lox, like most modern languages, uses **lexical scoping**. This means that you can figure out which declaration a variable name refers to just by reading the text of the program.
+  - The scope rules are part of the static semantics of the language, which is why they’re also called **static scope**.
+  - The function should capture a frozen snapshot of the environment as it existed at the moment the function was declared.
+  - static scope means that a variable usage always resolves to the same declaration
+- Semantic analysis
+  - Write a chunk of code that inspects the user’s program, finds every variable mentioned, and figures out which declaration each refers to. This process is an example of a **semantic analysis**.
+  - If we could ensure a variable lookup always walked the same number of links in the environment chain, that would ensure that it found the same variable in the same scope every time.
+  - After the parser produces the syntax tree, but before the interpreter starts executing it, we’ll do a single walk over the tree to resolve all of the variables it contains.
+- Resolver
+  - Make it an error to reference a variable in its initializer.
+  - We do allow declaring multiple variables with the same name in the global scope, but doing so in a local scope is probably a mistake
+  - Detect top level return statement

@@ -69,7 +69,7 @@ run_file :: proc(fp: string) -> (exit_code: int) {
 	return exit_code
 }
 
-run :: proc(code: string, try_parse_as_expr := false) -> (ok: bool) {
+run :: proc(code: string, is_repl := false) -> (ok: bool) {
 	ok = true
 	tokens, errors := scanner.scan(code)
 	// defer delete(tokens)
@@ -95,7 +95,7 @@ run :: proc(code: string, try_parse_as_expr := false) -> (ok: bool) {
 
 	log.debug("#### Parser ####")
 
-	parsed := parser.parse(tokens[:], try_parse_as_expr)
+	parsed := parser.parse(tokens[:], try_parse_as_expr = is_repl)
 	// defer parser.destroy(parsed)
 
 	if len(parsed.errors) > 0 {
@@ -124,14 +124,29 @@ run :: proc(code: string, try_parse_as_expr := false) -> (ok: bool) {
 		log.debugf("-- %d statements parsed", len(parsed.statements))
 	}
 
+	// Resolve
+	resolve_result: ^Resolve_Result
+	if !is_repl && !is_expr {
+		log.debug("#### Resolver ####")
+		resolve_result = resolve(parsed.statements[:])
+		for e in resolve_result.errors {
+			fmt.eprintf("-- error: %v\n", e)
+		}
+	}
+
+	// skip execution
+	if len(resolve_result.errors) > 0 {
+		return false
+	}
 
 	// evaluate statements/expressions
+	// arena: mem.Dynamic_Arena
+	// mem.dynamic_arena_init(&arena)
+	// arena_alloc := mem.dynamic_arena_allocator(&arena)
+	// defer mem.dynamic_arena_destroy(&arena)
+	// context.allocator = arena_alloc
 	{
-		// arena: mem.Dynamic_Arena
-		// mem.dynamic_arena_init(&arena)
-		// arena_alloc := mem.dynamic_arena_allocator(&arena)
-		// defer mem.dynamic_arena_destroy(&arena)
-		// context.allocator = arena_alloc
+		global_env.locals = resolve_result.locals
 
 		if is_expr {
 			log.debug("#### Evaluate Expression ####")
@@ -182,6 +197,6 @@ run_prompt :: proc() {
 			break
 		}
 
-		run(line, try_parse_as_expr = true)
+		run(line, is_repl = true)
 	}
 }
