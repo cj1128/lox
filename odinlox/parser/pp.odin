@@ -165,6 +165,7 @@ literal_to_string :: proc(literal: Literal, buf: []byte, quote_string := false) 
 	}
 
 	switch l in literal {
+	// TODO: output integer numbers without trailing zeros
 	case f64:
 		return fmt.bprintf(buf, "%f", l)
 	case bool:

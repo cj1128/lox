@@ -126,17 +126,17 @@ run :: proc(code: string, is_repl := false) -> (ok: bool) {
 
 	// Resolve
 	resolve_result: ^Resolve_Result
-	if !is_repl && !is_expr {
+	if !is_expr {
 		log.debug("#### Resolver ####")
 		resolve_result = resolve(parsed.statements[:])
 		for e in resolve_result.errors {
 			fmt.eprintf("-- error: %v\n", e)
 		}
-	}
 
-	// skip execution
-	if len(resolve_result.errors) > 0 {
-		return false
+		// skip execution
+		if len(resolve_result.errors) > 0 {
+			return false
+		}
 	}
 
 	// evaluate statements/expressions
@@ -146,7 +146,9 @@ run :: proc(code: string, is_repl := false) -> (ok: bool) {
 	// defer mem.dynamic_arena_destroy(&arena)
 	// context.allocator = arena_alloc
 	{
-		global_env.locals = resolve_result.locals
+		if resolve_result != nil {
+			global_env.locals = resolve_result.locals
+		}
 
 		if is_expr {
 			log.debug("#### Evaluate Expression ####")
