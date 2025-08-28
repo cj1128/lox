@@ -1,6 +1,8 @@
 package parser
 
 import "core:fmt"
+import "core:math"
+import "core:math/bits"
 import "core:strings"
 
 // pretty-print AST
@@ -70,6 +72,11 @@ format_stmt :: proc(sb: ^strings.Builder, stmt: ^Stmt) {
 			}
 		}
 
+		fmt.sbprintf(sb, ")")
+
+	case ^Class_Decl_Stmt:
+		fmt.sbprintf(sb, "(class ")
+		fmt.sbprintf(sb, "%s", s.name.lexeme)
 		fmt.sbprintf(sb, ")")
 
 	case ^Return_Stmt:
@@ -159,14 +166,21 @@ p_expr :: proc(sb: ^strings.Builder, name: string, exprs: ..^Expr) {
 	p_m_expr(sb, {name}, ..exprs)
 }
 
+
+is_valid_i64 :: proc(x: f64) -> bool {
+	return f64(i64(x)) == x
+}
+
 literal_to_string :: proc(literal: Literal, buf: []byte, quote_string := false) -> string {
 	if literal == nil {
 		return fmt.bprintf(buf, "nil")
 	}
 
 	switch l in literal {
-	// TODO: output integer numbers without trailing zeros
 	case f64:
+		if is_valid_i64(l) {
+			return fmt.bprintf(buf, "%d", i64(l))
+		}
 		return fmt.bprintf(buf, "%f", l)
 	case bool:
 		return fmt.bprint(buf, l)

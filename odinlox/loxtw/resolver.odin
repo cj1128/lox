@@ -25,12 +25,9 @@ Resolve_Error :: union {
 	Invalid_Return,
 }
 
-Local_Variable_Self_Initialization_Error :: struct {
-}
-Local_Variable_Already_Defined :: struct {
-}
-Invalid_Return :: struct {
-}
+Local_Variable_Self_Initialization_Error :: struct {}
+Local_Variable_Already_Defined :: struct {}
+Invalid_Return :: struct {}
 
 Resolve_Result :: struct {
 	locals: map[^Expr]int,
@@ -68,6 +65,8 @@ resolve_stmt :: proc(r: ^Resolver, stmt: ^Stmt) {
 	case ^Function_Decl_Stmt:
 		define(r, s.name)
 		resolve_function(r, s, .Function)
+	case ^Class_Decl_Stmt:
+		define(r, s.name)
 	case ^Expr_Stmt:
 		resolve_expr(r, s.expr)
 	case ^If_Stmt:

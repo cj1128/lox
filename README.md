@@ -301,7 +301,7 @@
 
 - Static scope
   - Lox, like most modern languages, uses **lexical scoping**. This means that you can figure out which declaration a variable name refers to just by reading the text of the program.
-  - The scope rules are part of the static semantics of the language, which is why they’re also called **static scope**.
+  - The scope rules are part of the static semantics of the language, which is why they're also called **static scope**.
   - The function should capture a frozen snapshot of the environment as it existed at the moment the function was declared.
   - static scope means that a variable usage always resolves to the same declaration
 - Semantic analysis
@@ -312,3 +312,5 @@
   - Make it an error to reference a variable in its initializer.
   - We do allow declaring multiple variables with the same name in the global scope, but doing so in a local scope is probably a mistake
   - Detect top level return statement
+
+## Chapter 12: Classes

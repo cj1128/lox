@@ -9,6 +9,7 @@ Stmt :: struct {
 		^If_Stmt,
 		^While_Stmt,
 		^Function_Decl_Stmt,
+		^Class_Decl_Stmt,
 		^Return_Stmt,
 	},
 }
@@ -46,6 +47,11 @@ Function_Decl_Stmt :: struct {
 	name:       Token,
 	params:     []Token,
 	body:       []^Stmt,
+}
+Class_Decl_Stmt :: struct {
+	using stmt: Stmt,
+	name:       Token,
+	methods:    []^Function_Decl_Stmt,
 }
 // keeps the `return` keyword token so we can use its location for error reporting
 Return_Stmt :: struct {
@@ -106,6 +112,13 @@ new_function_decl_stmt :: proc(name: Token, params: []Token, body: []^Stmt) -> ^
 	result.name = name
 	result.params = params
 	result.body = body
+	return result
+}
+
+new_class_decl_stmt :: proc(name: Token, methods: []^Function_Decl_Stmt) -> ^Stmt {
+	result := new_stmt(Class_Decl_Stmt)
+	result.name = name
+	result.methods = methods
 	return result
 }
 

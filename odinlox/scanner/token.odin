@@ -1,6 +1,6 @@
 package scanner
 
-Token_Type :: enum byte {
+Token_Type :: enum {
 	// Single-character tokens.
 	LEFT_PAREN,
 	RIGHT_PAREN,

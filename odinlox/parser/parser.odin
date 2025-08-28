@@ -20,8 +20,7 @@ Max_Argument_Count :: 255
 Parse_Warning :: union {
 	Too_Many_Arguments,
 }
-Too_Many_Arguments :: struct {
-}
+Too_Many_Arguments :: struct {}
 
 Parse_Error :: union {
 	Missing_Lefthand_Operand,
@@ -126,7 +125,29 @@ declaration :: proc(p: ^Parser) -> (stmt: ^Stmt, err: Parse_Error) {
 		return function_decl(p, .Function)
 	}
 
+	if match(p, .CLASS) {
+		return class_decl(p)
+	}
+
 	return statement(p)
+}
+
+class_decl :: proc(p: ^Parser) -> (stmt: ^Stmt, err: Parse_Error) {
+	consume(p, .IDENTIFIER, "Expect class name") or_return
+	name := previous(p)
+
+	consume(p, .LEFT_BRACE, "Expect '{' before class body") or_return
+
+	methods: [dynamic]^Function_Decl_Stmt
+
+	for !check(p, .RIGHT_BRACE) {
+		method := function_decl(p, .Method) or_return
+		append(&methods, method.variant.(^Function_Decl_Stmt))
+	}
+
+	consume(p, .RIGHT_BRACE, "Expect '}' after class body") or_return
+
+	return new_class_decl_stmt(name, methods[:]), nil
 }
 
 function_decl :: proc(p: ^Parser, kind: Function_Type) -> (stmt: ^Stmt, err: Parse_Error) {

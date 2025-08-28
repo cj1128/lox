@@ -13,6 +13,11 @@ Value :: union {
 	string,
 	bool,
 	Callable,
+	LoxClass,
+}
+
+LoxClass :: struct {
+	name: string,
 }
 
 Callable :: struct {
@@ -51,6 +56,7 @@ Assignment_Expr :: parser.Assignment_Expr
 Logical_Expr :: parser.Logical_Expr
 Call_Expr :: parser.Call_Expr
 Function_Decl_Stmt :: parser.Function_Decl_Stmt
+Class_Decl_Stmt :: parser.Class_Decl_Stmt
 Return_Stmt :: parser.Return_Stmt
 
 Runtime_Error :: union {
@@ -78,10 +84,8 @@ Must_Be_Numbers :: struct {
 Undefined_Var :: struct {
 	var: Token,
 }
-Not_Callable :: struct {
-}
-Unmatched_Arity :: struct {
-}
+Not_Callable :: struct {}
+Unmatched_Arity :: struct {}
 
 execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Runtime_Error {
 	switch s in stmt.variant {
@@ -121,8 +125,10 @@ execute :: proc(env: ^Env, stmt: ^Stmt, allocator := context.allocator) -> Runti
 		env_define(env, s.name.lexeme, value)
 
 	case ^Function_Decl_Stmt:
-		value: Value
 		env_define(env, s.name.lexeme, new_normal_function(s, env))
+
+	case ^Class_Decl_Stmt:
+		env_define(env, s.name.lexeme, new_class(s))
 
 	case ^Return_Stmt:
 		value := evaluate(env, s.value) or_return
@@ -306,6 +312,11 @@ new_normal_function :: proc(stmt: ^Function_Decl_Stmt, closure: ^Env) -> Callabl
 	}
 }
 
+new_class :: proc(stmt: ^Class_Decl_Stmt) -> LoxClass {
+	name := stmt.name.lexeme
+	return LoxClass{name = name}
+}
+
 normal_function_call :: proc(
 	s: Normal_Function,
 	env: ^Env,
@@ -389,6 +400,8 @@ value_to_string :: proc(v: Value, buf: []byte, quote_string := false) -> string 
 		case Normal_Function:
 			return fmt.bprint(buf, "<fun>")
 		}
+	case LoxClass:
+		return fmt.bprintf(buf, "<class %s>", e.name)
 	}
 
 	panic("unreachable")
