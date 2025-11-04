@@ -7,6 +7,9 @@
 - [Lox Implementations](https://github.com/munificent/craftinginterpreters/wiki/Lox-implementations)
 - [Lox Spec](./lox-spec.md)
 
+- Odin Lox implementations
+    - https://github.com/shettysach/Loxi
+
 ## Chapter 1 Introduction
 
 - Compiler-compiler
