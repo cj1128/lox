@@ -57,13 +57,14 @@ Parser :: struct {
 	result:  ^Parse_Result,
 }
 
+// public api
 parse :: proc(
 	tokens: []Token,
 	try_parse_as_expr := false,
 	allocator := context.allocator,
-) -> ^Parse_Result {
-	result := new(Parse_Result)
-	mem.dynamic_arena_init(&result.arena)
+) -> Parse_Result {
+	result: Parse_Result
+	mem.dynamic_arena_init(&result.arena, allocator, allocator)
 	arena_alloc := mem.dynamic_arena_allocator(&result.arena)
 
 	context.allocator = arena_alloc
@@ -71,7 +72,7 @@ parse :: proc(
 	result.errors = make([dynamic]Parse_Error)
 	result.statements = make([dynamic]^Stmt)
 
-	p := &Parser{tokens = tokens, result = result}
+	p := &Parser{tokens = tokens, result = &result}
 
 	program(p)
 
@@ -92,7 +93,6 @@ parse :: proc(
 }
 destroy :: proc(result: ^Parse_Result) {
 	mem.dynamic_arena_destroy(&result.arena)
-	free(result)
 }
 
 //
