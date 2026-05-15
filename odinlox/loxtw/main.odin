@@ -71,31 +71,30 @@ run_file :: proc(fp: string) -> (exit_code: int) {
 
 run :: proc(code: string, is_repl := false) -> (ok: bool) {
 	ok = true
-	tokens, errors := scanner.scan(code)
-	// defer delete(tokens)
-	// defer delete(errors)
+	scanned := scanner.scan(code)
+	// defer scanner.destroy(&scanned)
 
 	{
 		log.debug("#### Scanner ####")
 
-		if len(errors) > 0 {
+		if len(scanned.errors) > 0 {
 			ok = false
 			fmt.eprintln("failed to scan:")
-			for e in errors {
+			for e in scanned.errors {
 				fmt.eprintf("-- error: %v\n", e)
 			}
 			return
 		}
 
 		// print tokens
-		for t in tokens {
+		for t in scanned.tokens {
 			log.debug("-- token", t)
 		}
 	}
 
 	log.debug("#### Parser ####")
 
-	parsed := parser.parse(tokens[:], try_parse_as_expr = is_repl)
+	parsed := parser.parse(scanned.tokens[:], try_parse_as_expr = is_repl)
 	// defer parser.destroy(parsed)
 
 	if len(parsed.errors) > 0 {

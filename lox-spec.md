@@ -5,17 +5,18 @@
 ## Overall
 
 - dyanmic typing
-- has **statements** and **expressions**, an expression’s main job is to produce a value, a statement’s job is to produce an effect.
+- has **statements** and **expressions**, an expression's main job is to produce a value, a statement’s job is to produce an effect.
 - assignment is an expression rather than a statement
-- global variables can be redifined
+- global variables can be redefined
 - automatic Memory Management
+- supports line comment and nesting block comment
 
 ## Data Types
 
 - boolean: `true` and `false`
 - number: only IEEE754 double float
 - string: multi line string is allowed
-- nil
+- `nil`
 
 ## Expressions & Statements
 
@@ -44,7 +45,7 @@
   - call function using `functionName()`
   - the body of a function is always a block, if no `return` found, `nil` is implicitly returned
   - to be compatible with C, function params must <= 8
-- Closures
+- closures
   - functons are first class
 
 ### Classes
@@ -90,10 +91,13 @@ program = declaration* EOF ;
 (* Statement *)
 declaration = classDecl | funDecl | varDecl | statement ;
 classDecl = "class" IDENTIFIER "{" function* "}" ;
+
 funDecl = "fun" function ;
 function = IDENTIFIER "(" parameters? ")" block ;
 parameters = IDENTIFIER ( "," IDENTIFIER )* ;
+
 varDecl = "var" IDENTIFIER ("=" expression)? ";" ;
+
 statement = exprStmt | printStmt | block | ifStmt | whileStmt | forStmt ;
 forStmt = "for" "(" ( varDecl | exprStmt | ";" )
                       expression? ";"

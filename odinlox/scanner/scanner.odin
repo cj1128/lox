@@ -1,10 +1,8 @@
 #+feature dynamic-literals
 package scanner
 
-import "core:fmt"
 import "core:strconv"
 
-@(private)
 Scanner :: struct {
 	// all index are byte-level
 	start:   int,
@@ -27,6 +25,7 @@ Error :: struct {
 	char: rune,
 }
 
+// will consue the char
 match :: proc(s: ^Scanner, expected: byte) -> bool {
 	if s.current >= len(s.source) {
 		return false
@@ -53,13 +52,21 @@ add_error_unterminated_block_comment :: proc(s: ^Scanner) {
 }
 
 add_token :: proc(s: ^Scanner, token_type: Token_Type) {
-	append(&s.tokens, Token{type = token_type, lexeme = s.source[s.start:s.current]})
+	append(
+		&s.tokens,
+		Token{type = token_type, lexeme = s.source[s.start:s.current], line = s.line},
+	)
 }
 
 add_string_token :: proc(s: ^Scanner, literal: string) {
 	append(
 		&s.tokens,
-		Token{type = .STRING, literal = literal, lexeme = s.source[s.start:s.current]},
+		Token {
+			type = .STRING,
+			literal = literal,
+			lexeme = s.source[s.start:s.current],
+			line = s.line,
+		},
 	)
 }
 
@@ -67,7 +74,7 @@ add_number_token :: proc(s: ^Scanner) {
 	lexeme := s.source[s.start:s.current]
 	value, ok := strconv.parse_f64(lexeme)
 	assert(ok)
-	append(&s.tokens, Token{type = .NUMBER, lexeme = lexeme, literal = value})
+	append(&s.tokens, Token{type = .NUMBER, lexeme = lexeme, literal = value, line = s.line})
 }
 
 KEYWORDS := map[string]Token_Type {
@@ -93,7 +100,7 @@ add_identifier_token :: proc(s: ^Scanner, lexeme: string) {
 	if ok {
 		add_token(s, type)
 	} else {
-		append(&s.tokens, Token{type = .IDENTIFIER, lexeme = lexeme})
+		append(&s.tokens, Token{type = .IDENTIFIER, lexeme = lexeme, line = s.line})
 	}
 }
 
@@ -119,9 +126,25 @@ has_content :: proc(s: ^Scanner) -> bool {
 	return s.current < len(s.source)
 }
 
-// public api
-scan :: proc(source: string, allocator := context.allocator) -> ([dynamic]Token, [dynamic]Error) {
-	s := &Scanner{source = source, tokens = make([dynamic]Token), errors = make([dynamic]Error)}
+Scan_Result :: struct {
+	tokens: [dynamic]Token,
+	errors: [dynamic]Error,
+}
+
+destroy :: proc(result: ^Scan_Result) {
+	delete(result.tokens)
+	delete(result.errors)
+}
+
+// Token lexemes and string literals are slices into source, not copies.
+// Caller must ensure source outlives the returned tokens.
+scan :: proc(source: string, allocator := context.allocator) -> Scan_Result {
+	s := &Scanner {
+		source = source,
+		line = 1,
+		tokens = make([dynamic]Token, allocator),
+		errors = make([dynamic]Error, allocator),
+	}
 
 	for has_content(s) {
 		s.start = s.current
@@ -163,7 +186,7 @@ scan :: proc(source: string, allocator := context.allocator) -> ([dynamic]Token,
 		case '>':
 			add_token(s, match(s, '=') ? .GREATER_EQUAL : .GREATER)
 		case '/':
-			// comment
+			// line comment
 			if match(s, '/') {
 				for has_content(s) && peek(s) != '\n' {
 					advance(s)
@@ -201,7 +224,7 @@ scan :: proc(source: string, allocator := context.allocator) -> ([dynamic]Token,
 	s.start = s.current
 	add_token(s, .EOF)
 
-	return s.tokens, s.errors
+	return Scan_Result{tokens = s.tokens, errors = s.errors}
 }
 
 is_alpha_underscore :: proc(char: u8) -> bool {

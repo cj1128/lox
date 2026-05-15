@@ -1,20 +1,20 @@
 package scanner
 
-import "../scanner"
+import scanner "."
 import "core:fmt"
-import "core:slice"
 import "core:testing"
 
 @(test)
 basic_scanner :: proc(t: ^testing.T) {
-	tokens, errors := scanner.scan(
+	result := scanner.scan(
 		`( ) { } , . - + ; / *
   ! ? : != = == > >= < <=
   identifier "string" 1.234000
   and class else fun for if nil or print return super this true false var while
 `,
 	)
-	testing.expect(t, len(errors) == 0)
+	defer scanner.destroy(&result)
+	testing.expect(t, len(result.errors) == 0)
 
 	expected := []scanner.Token {
 		{type = .LEFT_PAREN},
@@ -61,7 +61,7 @@ basic_scanner :: proc(t: ^testing.T) {
 	}
 
 	for exp, i in expected {
-		token := tokens[i]
+		token := result.tokens[i]
 
 		testing.expect(
 			t,
@@ -88,52 +88,131 @@ basic_scanner :: proc(t: ^testing.T) {
 }
 
 @(test)
-scanner_error :: proc(t: ^testing.T) {
-	tokens, errors := scanner.scan(`"unterminated string`)
-	testing.expect(t, len(tokens) == 1) // EOF
-	testing.expect(t, tokens[0].type == .EOF)
+error_unterminated_string :: proc(t: ^testing.T) {
+	result := scanner.scan(`"unterminated string`)
+	defer scanner.destroy(&result)
+	testing.expect(t, len(result.tokens) == 1) // EOF
+	testing.expect(t, result.tokens[0].type == .EOF)
 
-	testing.expect(t, len(errors) == 1)
-	testing.expect(t, errors[0].type == .Unterminated_String)
+	testing.expect(t, len(result.errors) == 1)
+	testing.expect(t, result.errors[0].type == .Unterminated_String)
 }
 
 @(test)
 line_comment :: proc(t: ^testing.T) {
-	tokens, errors := scanner.scan(`
+	result := scanner.scan(`
     // this is a comment
     +
   `)
-	testing.expect(t, len(errors) == 0)
-	testing.expect(t, len(tokens) == 2)
-	testing.expect(t, tokens[0].type == .PLUS)
-	testing.expect(t, tokens[1].type == .EOF)
+	defer scanner.destroy(&result)
+	testing.expect(t, len(result.errors) == 0)
+	testing.expect(t, len(result.tokens) == 2)
+	testing.expect(t, result.tokens[0].type == .PLUS)
+	testing.expect(t, result.tokens[1].type == .EOF)
 }
 
 @(test)
 block_comment_ok :: proc(t: ^testing.T) {
-	tokens, errors := scanner.scan(
-		`
+	result := scanner.scan(`
     /*
       /*
           hello world
       */
     */
     +
-  `,
-	)
-	testing.expect(t, len(errors) == 0)
-	testing.expect(t, len(tokens) == 2)
-	testing.expect(t, tokens[0].type == .PLUS)
-	testing.expect(t, tokens[1].type == .EOF)
+  `)
+	defer scanner.destroy(&result)
+	testing.expect(t, len(result.errors) == 0)
+	testing.expect(t, len(result.tokens) == 2)
+	testing.expect(t, result.tokens[0].type == .PLUS)
+	testing.expect(t, result.tokens[1].type == .EOF)
 }
 @(test)
-block_comment_error :: proc(t: ^testing.T) {
-	tokens, errors := scanner.scan(`
+error_unterminated_block_comment :: proc(t: ^testing.T) {
+	result := scanner.scan(`
     /*
       /*
     */
     +
   `)
-	testing.expect(t, len(errors) == 1)
-	testing.expect(t, errors[0].type == .Unterminated_Block_Comment)
+	defer scanner.destroy(&result)
+	testing.expect(t, len(result.errors) == 1)
+	testing.expect(t, result.errors[0].type == .Unterminated_Block_Comment)
+}
+
+@(test)
+error_unexpected_char :: proc(t: ^testing.T) {
+	result := scanner.scan(`@`)
+	defer scanner.destroy(&result)
+	testing.expect(t, len(result.tokens) == 1) // EOF
+	testing.expect(t, result.tokens[0].type == .EOF)
+	testing.expect(t, len(result.errors) == 1)
+	testing.expect(t, result.errors[0].type == .Unexpected_Char)
+	testing.expect(t, result.errors[0].char == '@')
+}
+
+@(test)
+error_multiple :: proc(t: ^testing.T) {
+	result := scanner.scan(`@ + #`)
+	defer scanner.destroy(&result)
+	testing.expect(t, len(result.errors) == 2)
+	testing.expect(t, result.errors[0].type == .Unexpected_Char)
+	testing.expect(t, result.errors[0].char == '@')
+	testing.expect(t, result.errors[1].type == .Unexpected_Char)
+	testing.expect(t, result.errors[1].char == '#')
+	// valid tokens still scanned
+	testing.expect(t, result.tokens[0].type == .PLUS)
+	testing.expect(t, result.tokens[1].type == .EOF)
+}
+
+@(test)
+token_line :: proc(t: ^testing.T) {
+	result := scanner.scan(`var x = 1
+print x
+"hello"
+`)
+	defer scanner.destroy(&result)
+	testing.expect(t, len(result.errors) == 0)
+
+	Expected :: struct {
+		type: scanner.Token_Type,
+		line: int,
+	}
+
+	expected := []Expected {
+		{.VAR, 1},
+		{.IDENTIFIER, 1},
+		{.EQUAL, 1},
+		{.NUMBER, 1},
+		{.PRINT, 2},
+		{.IDENTIFIER, 2},
+		{.STRING, 3},
+		{.EOF, 4},
+	}
+
+	testing.expect(
+		t,
+		len(result.tokens) == len(expected),
+		fmt.tprintf("expected %d tokens, got %d", len(expected), len(result.tokens)),
+	)
+
+	for exp, i in expected {
+		token := result.tokens[i]
+		testing.expect(
+			t,
+			token.type == exp.type,
+			fmt.tprintf("token %d: expected type %v, got %v", i, exp.type, token.type),
+		)
+		testing.expect(
+			t,
+			token.line == exp.line,
+			fmt.tprintf(
+				"token %d (%v): expected line %d, got %d",
+				i,
+				exp.type,
+				exp.line,
+				token.line,
+			),
+		)
+	}
 }
